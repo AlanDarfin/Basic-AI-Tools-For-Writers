@@ -29,7 +29,7 @@ test('settings use named icon tabs on both rows and reveal an offscreen active t
  assert.match(settings,/writerSidebarButtonIcon\(b,sectionIcons\[key\]/);
  assert.match(settings,/writerSidebarButtonIcon\(b,groupIcons\[id\]/);
  assert.doesNotMatch(settings,/groupPicker|sectionPicker/);
- const reveal=vm.runInNewContext(fs.readFileSync('src/v13/ui-foundation.js','utf8')+'\nwriterSidebarRevealSelected');
+ const reveal=vm.runInNewContext(fs.readFileSync('src/core/ui-foundation.js','utf8')+'\nwriterSidebarRevealSelected');
  let tab={left:230,right:295},scrolls=0;
  const row={scrollWidth:600,clientWidth:260,scrollLeft:100,getBoundingClientRect:()=>({left:0,right:260}),
   querySelector:()=>({getBoundingClientRect:()=>tab,scrollIntoView(){scrolls++;}})};

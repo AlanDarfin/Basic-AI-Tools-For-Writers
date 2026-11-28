@@ -6,7 +6,7 @@ const vm=require('node:vm');
 function runtime(){
  const calls=[],context={writerUi:(_pt,en)=>en,writerModuleOn:(p,id)=>p.settings.visibleModules?.[id]!==false};
  vm.createContext(context);
- vm.runInContext(fs.readFileSync('src/v4/modules.js','utf8')+'\n'+fs.readFileSync('src/v13/settings-catalog.js','utf8')+'\n'+fs.readFileSync('src/v13/setup-guide.js','utf8')+'\nglobalThis.api={WRITER_MODULES,WRITER_SETTINGS_CATALOG,WRITER_SETTINGS_GROUPS,writerSettingsSections,writerSettingsGroups,writerSettingsNavigation,writerSettingsToggleFavorite,writerQuickStartChoices,writerQuickStartApply,writerQuickStartRegister};',context);
+ vm.runInContext(fs.readFileSync('src/settings/modules.js','utf8')+'\n'+fs.readFileSync('src/settings/settings-catalog.js','utf8')+'\n'+fs.readFileSync('src/settings/setup-guide.js','utf8')+'\nglobalThis.api={WRITER_MODULES,WRITER_SETTINGS_CATALOG,WRITER_SETTINGS_GROUPS,writerSettingsSections,writerSettingsGroups,writerSettingsNavigation,writerSettingsToggleFavorite,writerQuickStartChoices,writerQuickStartApply,writerQuickStartRegister};',context);
  context.calls=calls;
  return {api:context.api,context,calls};
 }

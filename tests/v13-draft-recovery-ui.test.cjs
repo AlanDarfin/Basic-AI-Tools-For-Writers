@@ -4,7 +4,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
 const path=require('node:path');
-const source=fs.readFileSync(path.join(__dirname,'../src/v13/draft-recovery-ui.js'),'utf8');
+const source=fs.readFileSync(path.join(__dirname,'../src/writing/draft-recovery-ui.js'),'utf8');
 class TFile{
  constructor(path){this.path=path;this.extension=path.split('.').pop();this.basename=path.split('/').pop().replace(/\.[^.]+$/,'');}
 }
@@ -77,7 +77,7 @@ function setup(entries=[entry()]){
  return {api,plugin,store,files,contents,created,opened,notices,document,vault,open};
 }
 test('the concatenated store and UI preserve independent entry validators',async()=>{
- const storeSource=fs.readFileSync(path.join(__dirname,'../src/v13/draft-recovery.js'),'utf8');
+ const storeSource=fs.readFileSync(path.join(__dirname,'../src/persistence/draft-recovery.js'),'utf8');
  const plugin={settings:{v11Studio:{}},manifest:{dir:'.obsidian/plugins/basic'},app:{vault:{
   adapter:{exists:async()=>false}
  }}};

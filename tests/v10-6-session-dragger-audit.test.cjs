@@ -4,9 +4,9 @@ function expose(path,names,extras={}){
  return vm.runInNewContext(fs.readFileSync(path,'utf8')+'\n({'+names.join(',')+'})',
   {console,Date,Map,Set,Math,Number,String,Boolean,Uint8Array,JSON,Promise,writerUi:(pt,en)=>en,...extras});
 }
-const home=expose('src/v10/startup-cleanup.js',['writerV106HomeStartupPolicy','writerV106HomeChooseLeaf','writerV106HomeCleanup'],{writerModuleOn:()=>true,WRITER_V8_HOME_VIEW:'writer-writing-home'});
-const drag=expose('src/v10/block-dragger.js',['writerV106DragMerge','writerV106DragBlocks','writerV106DragBlockAt','writerV106DragMove','writerV106DragConvert','writerV106DragApply']);
-const hist=expose('src/v10/historical-helpers.js',['writerV106LegacyDictionaryCandidates','writerV106JsonParse']);
+const home=expose('src/core/startup-cleanup.js',['writerV106HomeStartupPolicy','writerV106HomeChooseLeaf','writerV106HomeCleanup'],{writerModuleOn:()=>true,WRITER_V8_HOME_VIEW:'writer-writing-home'});
+const drag=expose('src/editor/block-dragger.js',['writerV106DragMerge','writerV106DragBlocks','writerV106DragBlockAt','writerV106DragMove','writerV106DragConvert','writerV106DragApply']);
+const hist=expose('src/compat/historical-helpers.js',['writerV106LegacyDictionaryCandidates','writerV106JsonParse']);
 test('Clean startup skips hot reload and respects disabled setting',()=>{
  assert.equal(home.writerV106HomeStartupPolicy({homeCleanStart:true},true,false),'skip');
  assert.equal(home.writerV106HomeStartupPolicy({homeCleanStart:true},false,true),'skip');
@@ -96,7 +96,7 @@ test('Diagnostics opens the legacy dictionary recovery and preserves existing di
  }
  class TFile{constructor(path){this.path=path;this.extension='md';}}
  const legacy=new TFile('Notes/Old dictionary.md');
- const source=['src/v4/modules.js','src/v10/historical-helpers.js'].map(path=>fs.readFileSync(path,'utf8')).join('\n');
+ const source=['src/settings/modules.js','src/compat/historical-helpers.js'].map(path=>fs.readFileSync(path,'utf8')).join('\n');
  const api=vm.runInNewContext(source+'\n({writerRenderDiagnostics,writerV106HistoricRegister})',{
   Setting,Modal,TFile,Notice:class{},writerUi:(pt,en)=>en
  });
@@ -115,10 +115,11 @@ test('Diagnostics opens the legacy dictionary recovery and preserves existing di
 });
 test('Build, homepage and settings contain required v10.6 wiring',()=>{
  const read=x=>fs.readFileSync(x,'utf8');
- const homeSrc=read('src/v8/writing-home.js'),build=read('scripts/build-v3.js'),enhancements=read('src/v10/enhancements.js');
- for(const mod of ['startup-cleanup','block-dragger','historical-helpers'])assert.ok(build.includes('v10/'+mod));
+ const homeSrc=read('src/workspace/writing-home.js'),enhancements=read('src/core/enhancements.js');
+ const {sourceIds}=require('../scripts/js-manifest.js');
+ for(const mod of ['startup-cleanup','block-dragger','historical-helpers'])assert.ok(sourceIds.includes('src/v10/'+mod+'.js'));
  assert.ok(homeSrc.includes('writerV106HomeRegisterStartup(plugin,open)'));
- assert.ok(read('src/v8/finish-blocks.js').includes('homeCleanStart:true'));
+ assert.ok(read('src/blocks/finish-blocks.js').includes('homeCleanStart:true'));
  assert.ok(enhancements.includes('writerV106DragRegister(plugin)'));
  assert.ok(enhancements.includes('writerV106HistoricRegister(plugin)'));
 });

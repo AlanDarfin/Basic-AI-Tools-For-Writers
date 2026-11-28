@@ -1,0 +1,1562 @@
+'use strict';
+/* Lightweight local-first writing dashboard, inspired by Harbor Tab + Genkan. */
+const WRITER_V8_HOME_VIEW='writer-writing-home';
+const WRITER_V8_HOME_SECTIONS=['calendar','soundscape','continue','recent','favorites','quick','stats','activity','random','tags','goal','gallery','quotes','today','books','trash','reading','zotero','webBookmarks'];
+const WRITER_V8_HOME_ORIGINAL_QUOTES=[
+ ['Cada parágrafo é uma porta para uma história que ainda não existe.',''],
+ ['Uma boa ideia cresce quando ganha espaço na página.',''],
+ ['Escreva primeiro. Descubra o caminho durante a revisão.',''],
+ ['Histórias se constroem uma palavra de cada vez.',''],
+ ['Às vezes uma cena pequena muda o rumo de um livro inteiro.',''],
+  ["Penso, logo existo.","René Descartes"],
+  ["Uma vida não examinada não merece ser vivida.","Sócrates · Apologia de Platão"],
+  ["O homem é a medida de todas as coisas.","Protágoras"],
+  ["O coração tem razões que a própria razão desconhece.","Blaise Pascal"],
+  ["O homem nasceu livre, e por toda parte encontra-se acorrentado.","Jean-Jacques Rousseau"],
+  ["A vida é curta, a arte é longa.","Hipócrates"],
+  ["Tudo vale a pena se a alma não é pequena.","Fernando Pessoa"],
+  ["Para viajar basta existir.","Fernando Pessoa"],
+  ["Navegar é preciso; viver não é preciso.","Fernando Pessoa"],
+  ["Ler é sonhar pela mão de outrem.","Fernando Pessoa"],
+  ["Ao vencedor, as batatas!","Machado de Assis"],
+  ["Ser ou não ser, eis a questão.","William Shakespeare"],
+  ["O resto é silêncio.","William Shakespeare"],
+  ["Somos feitos da mesma matéria que os sonhos.","William Shakespeare"],
+  ["A verdade raramente é pura e nunca é simples.","Oscar Wilde"],
+ ['O próximo capítulo começa com uma única linha.','']
+];
+function writerV8HomeQuoteChoices(value){
+ const lines=String(value||'').split(/\r?\n/).map(s=>s.trim()).filter(Boolean).slice(0,80);
+ const choices=lines.map(line=>{
+  const parts=line.split(/\s+\|\s+/);
+  return [String(parts[0]||'').slice(0,440),String(parts.slice(1).join(' | ')||'').slice(0,80)];
+ }).filter(row=>row[0]);
+ return choices.length?choices:WRITER_V8_HOME_ORIGINAL_QUOTES;
+}
+function writerV8HomePick(items,previous=''){
+ if(!Array.isArray(items)||!items.length)return null;
+ if(items.length===1)return items[0];
+ const others=items.filter(item=>(typeof item==='string'?item:item?.path||item?.[0])!==previous);
+ return (others.length?others:items)[Math.floor(Math.random()*(others.length?others:items).length)];
+}
+const WRITER_V8_HOME_CATALOG={
+ calendar:['calendar-days','Relógio e calendário','Clock and calendar','Mês atual e acesso à agenda','Current month and calendar'],
+ soundscape:['headphones','Rádio de escrita','Writing radio','Rádios e música local no computador','Desktop radio and local music'],
+ continue:['book-open','Continuar escrevendo','Continue writing','Retome seu projeto','Resume your project'],
+ recent:['history','Notas recentes','Recent notes','Últimas notas editadas','Recently edited notes'],
+ favorites:['star','Favoritos','Favorites','Notas fixadas por você','Your starred notes'],
+ quick:['notebook-pen','Rascunhos rápidos','Quick drafts','Três rascunhos locais','Three local draft pads'],
+ stats:['chart-no-axes-column','Resumo do cofre','Vault summary','Quantidade de notas e atividade','Note counts and activity'],
+ activity:['chart-column','Atividade semanal','Weekly activity','Notas modificadas nos últimos sete dias','Notes modified in the last seven days'],
+ random:['shuffle','Nota surpresa','Surprise note','Descubra uma nota aleatória do cofre','Discover a random vault note'],
+ tags:['tags','Tags frequentes','Popular tags','Tags mais usadas nas notas','Most-used note tags'],
+ goal:['target','Meta de palavras','Word target','Progresso de uma nota recente','Progress for a recent note'],
+ gallery:['images','Galeria do cofre','Vault gallery','Foto aleatória dos arquivos locais','A random image from your local vault'],
+ quotes:['quote','Citação do dia','Random quote','Citação diferente ao abrir a homepage','A fresh quote every time you open home'],
+ today:['calendar-check','Editadas hoje','Edited today','Notas modificadas durante o dia','Notes modified today'],
+ books:['library-big','Meus livros','My books','Visualização dos livros Longform','Longform bookshelf'],
+ trash:['trash-2','Lixeira','Trash explorer','Restaure notas da lixeira interna','Restore notes from Obsidian trash'],
+ reading:['book-open-check','Leitura atual','Current reading','Palavras, títulos e tempo estimado','Words, headings and estimated time'],
+ zotero:['book-marked','Fontes Zotero','Zotero sources','Notas de pesquisa importadas','Imported research notes'],
+ webBookmarks:['globe','Favoritos da web','Web bookmarks','Links salvos para abrir no Surfing ou navegador','Saved links for Surfing or your browser'],
+};
+function writerV8HomeSearch(files,query,cache,max=12){
+ if(typeof writerV83FuzzySearch==='function')return writerV83FuzzySearch(files,query,cache,max);
+ const q=String(query||'').trim().toLocaleLowerCase();
+ if(!q)return [];
+ return files.filter(file=>String(file.basename||'').toLocaleLowerCase().includes(q)||
+  String(file.path||'').toLocaleLowerCase().includes(q)||
+  (cache?.getFileCache?.(file)?.headings||[]).some(h=>String(h.heading||'').toLocaleLowerCase().includes(q))).slice(0,max);
+}
+// A lazy snapshot belongs to one synchronous dashboard render, never to search
+// or a later render. Hidden widgets do not trigger a vault enumeration.
+function writerV16HomeMarkdownSnapshot(vault){
+ let files;
+ return ()=>files??=(vault.getMarkdownFiles?.()||[]).slice();
+}
+function writerV8HomeTopFiles(plugin,count=12,getFiles=()=>plugin.app.vault.getMarkdownFiles?.()||[]){
+ const recent=plugin.settings.v8Finish?.homeRecent||[];
+ const used=new Set();
+ const paths=recent.map(path=>plugin.app.vault.getAbstractFileByPath(path))
+  .filter(f=>{if(!(f instanceof TFile)||f.extension!=='md'||used.has(f.path))return false;used.add(f.path);return true;});
+ if(paths.length>=count)return paths.slice(0,count);
+ const seen=used;
+ const last=getFiles().slice().sort((a,b)=>(b.stat?.mtime||0)-(a.stat?.mtime||0));
+ for(const file of last){if(paths.length>=count)break;if(!seen.has(file.path)){paths.push(file);seen.add(file.path);}}
+ return paths.slice(0,count);
+}
+function writerV8HomeStats(plugin,files=plugin.app.vault.getMarkdownFiles?.()||[]){
+ const since=Date.now()-7*86400000;
+ return {notes:files.length,recent:files.filter(f=>(f.stat?.mtime||0)>=since).length,
+  projects:plugin.app.workspace.getLeavesOfType?.(PROJECT_VIEW)?.length||0};
+}
+// Preserve the existing seven daily windows; read each file timestamp once.
+function writerV16HomeActivityCounts(files,now){
+ const days=[],counts=Array(7).fill(0);
+ for(let i=6;i>=0;i--)days.push(new Date(now.getFullYear(),now.getMonth(),now.getDate()-i));
+ const bounds=days.map(day=>[day.getTime(),day.getTime()+86400000]);
+ for(const file of files){
+  const mtime=file.stat?.mtime||0;
+  for(let i=0;i<bounds.length;i++)if(mtime>=bounds[i][0]&&mtime<bounds[i][1])counts[i]++;
+ }
+ return {days,counts};
+}
+// One pending measurement per render; retained observer callbacks become inert.
+function writerV16HomeFrameQueue(request,cancel,update){
+ let pending=null,disposed=false;
+ return {
+  schedule(){
+   if(disposed||pending)return;
+   const ticket={id:null};pending=ticket;
+   ticket.id=request(()=>{
+    if(disposed||pending!==ticket)return;
+    pending=null;update();
+   });
+  },
+  dispose(){
+   if(disposed)return;
+   disposed=true;
+   const ticket=pending;pending=null;
+   if(ticket?.id!=null)cancel(ticket.id);
+  }
+ };
+}
+// Export the captured draft; never clear a newer edit or navigate from a stale render.
+async function writerV16HomeExportDraft(view,slot,raw,current,selected,editor){
+ const drafts=view.plugin.settings.v8Finish.homeQuick;
+ const body=raw.trim();
+ if(!body)return {file:null,cleared:false};
+ const vault=view.app.vault,folder='Quick Notes';
+ if(!vault.getAbstractFileByPath(folder))await vault.createFolder(folder);
+ const label=new Date().toISOString().slice(0,10);
+ let path=folder+'/'+label+'-writing.md',n=2;
+ while(vault.getAbstractFileByPath(path))path=folder+'/'+label+'-writing-'+n+++'.md';
+ const file=await vault.create(path,body+'\n');
+ const owns=()=>current()&&view.plugin.settings.v8Finish.homeQuick===drafts;
+ // Conservative on tab changes: retain the original draft if its editor is no longer selected.
+ if(!owns()||selected()!==slot||editor.value!==raw||drafts[slot]!==raw.slice(0,12000))return {file,cleared:false};
+ drafts[slot]='';editor.value='';
+ try{await view.plugin.saveSettings();}
+ catch(error){
+  // Restore only the value we cleared; a later edit always wins.
+  if(owns()&&drafts[slot]===''){
+   drafts[slot]=raw.slice(0,12000);
+   if(selected()===slot&&editor.value==='')editor.value=raw;
+  }
+  throw error;
+ }
+ return {file,cleared:true};
+}
+class WriterV8HomeView extends ItemView{
+ constructor(leaf,plugin){super(leaf);this.plugin=plugin;this.disposed=false;this.saveTimer=null;this.widgetResizeObserver=null;}
+ getViewType(){return WRITER_V8_HOME_VIEW;}
+ getDisplayText(){return String(this.plugin.settings?.v8Finish?.homeTitle||'').trim()||writerUi('Início · Escrita','Home · Writing');}
+ getIcon(){return writerV8HomeIconName(this.plugin.settings?.v8Finish?.homeIcon);}
+ async onOpen(){
+  if(this.homeSession)return;
+  const session=this.homeSession={};
+  this.disposed=false;this.homeQuote=null;this.homeQuotePrevious='';this.homeGalleryImage=null;
+  this.render();
+  // Desktop-only: focus the search once when this view opens, not on every rerender.
+  if(!writerV8HomeIsMobile(this.plugin)){
+   this.homeFocusTimer=setTimeout(()=>{
+    if(this.homeSession===session&&!this.disposed&&this.app.workspace.activeLeaf===this.leaf){
+     const target=this.homeSurfingInput?.isConnected?this.homeSurfingInput:this.homeSearchInput;
+     if(target?.isConnected)target.focus({preventScroll:true});
+    }
+   },0);
+  }
+  this.writerV8ClockTimer=setInterval(()=>{
+   if(this.disposed||this.homeSession!==session)return;
+   this.writerV8ClockRefresh?.();
+   this.syncSurfingVisibility();
+  },1000);
+ }
+ async onClose(){
+  this.disposed=true;this.homeSession=null;
+  this.homeRenderGeneration=(this.homeRenderGeneration||0)+1;
+  this.widgetFrameQueue?.dispose();this.widgetFrameQueue=null;
+  clearTimeout(this.homeFocusTimer);this.homeFocusTimer=null;
+  clearTimeout(this.homeSearchTimer);this.homeSearchTimer=null;
+  this.homeSearchInput=null;this.disposeSurfingBar();
+  this.widgetResizeObserver?.disconnect();this.widgetResizeObserver=null;
+  clearInterval(this.writerV8ClockTimer);this.writerV8ClockTimer=null;this.writerV8ClockRefresh=null;
+  const unsaved=!!this.saveTimer;clearTimeout(this.saveTimer);this.saveTimer=null;
+  if(unsaved)await this.plugin.saveSettings();
+ }
+ saveSoon(){
+  if(this.disposed)return;
+  clearTimeout(this.saveTimer);
+  const session=this.homeSession;
+  const timer=setTimeout(()=>{
+   if(this.disposed||this.homeSession!==session||this.saveTimer!==timer)return;
+   this.saveTimer=null;void this.plugin.saveSettings().catch(e=>console.warn('[Basic AI] homepage settings:',e));
+  },600);
+  this.saveTimer=timer;
+ }
+ widgetPreferences(){
+  const global=this.plugin.settings.v8Finish;
+  const space=typeof writerV9215ActiveSpace==='function'?writerV9215ActiveSpace(this.plugin):null;
+  if(!space?.homeWidgetsEnabled)return global;
+  if(!space.homeOrder?.length)space.homeOrder=[...global.homeOrder];
+   space.homeOrder=[...new Set([...space.homeOrder.filter(k=>WRITER_V8_HOME_SECTIONS.includes(k)),...global.homeOrder])];
+  if(!Array.isArray(space.homeHidden))space.homeHidden=[...global.homeHidden];
+   space.homeHidden=space.homeHidden.filter(k=>WRITER_V8_HOME_SECTIONS.includes(k));
+  if(!space.homeWidgetSizes)space.homeWidgetSizes={...global.homeWidgetSizes};
+  if(!space.homeWidgetFrames)space.homeWidgetFrames={...global.homeWidgetFrames};
+  if(!['grid','free'].includes(space.homeWidgetAlignment))space.homeWidgetAlignment=global.homeWidgetAlignment||'grid';
+  return space;
+ }
+ openFile(file){
+  if(!(file instanceof TFile))return;
+  // Replace the Homepage in the same leaf instead of opening another tab.
+  const leaf=this.leaf||this.app.workspace.activeLeaf;
+  if(leaf)void leaf.openFile(file);
+ }
+ render(){
+  if(this.disposed)return;
+  const scroll=this.contentEl.scrollTop||0;
+  this.homeRenderGeneration=(this.homeRenderGeneration||0)+1;
+  this.widgetFrameQueue?.dispose();this.widgetFrameQueue=null;
+  clearTimeout(this.homeSearchTimer);this.homeSearchTimer=null;
+  this.writerV8ClockRefresh=null;
+  this.widgetResizeObserver?.disconnect();this.widgetResizeObserver=null;
+  this.disposeSurfingBar();
+  this.contentEl.empty();this.contentEl.addClass('writer-v8-home');
+  const cfg=this.plugin.settings.v8Finish,widgetCfg=this.widgetPreferences();
+  // Surfing's omnibox is a permanent top address/search bar only while Surfing
+  // is active; Basic's original vault search stays independent beneath it.
+  const surfing=writerV8HomeSurfing(this.plugin);
+  this.homeSurfingEnabled=Boolean(!writerV8HomeIsMobile(this.plugin)&&surfing!==this.homeSurfingFailed&&typeof surfing?.addHeaderAndSearchBar==='function');
+  this.homeSurfingInput=null;
+  if(this.homeSurfingEnabled)this.renderSurfingBar(this.contentEl);
+  // Heading follows the optional browser bar, then the existing vault search.
+  const hero=this.contentEl.createDiv({cls:'writer-v8-home-hero'});
+  const heading=hero.createDiv({cls:'writer-v8-home-heading'});
+  heading.style.setProperty('--writer-v8-home-title-color',writerV9SafeHex(cfg.homeTitleColor)||'var(--interactive-accent)');
+  heading.style.setProperty('--writer-v8-home-icon-color',writerV9SafeHex(cfg.homeIconColor)||'var(--interactive-accent)');
+  const icon=heading.createSpan({cls:'writer-v8-home-title-icon'});
+  const setIcon=require('obsidian').setIcon;
+  const image=writerV8HomeImageURL(this.plugin,cfg.homeIconImage);
+  if(image)icon.createEl('img',{attr:{src:image,alt:'',loading:'lazy'}});
+  else if(typeof setIcon==='function')setIcon(icon,writerV8HomeIconName(cfg.homeIcon));
+  heading.createEl('h2',{text:String(cfg.homeTitle||'').trim()||writerUi('Seu espaço de escrita','Your writing space')});
+  const top=this.contentEl.createDiv({cls:'writer-v8-home-search-region'});
+  this.renderSearch(top);
+  const commands=this.contentEl.createDiv({cls:'writer-v8-home-quick-actions',
+   attr:{role:'group','aria-label':writerUi('Ações rápidas','Quick actions')}});
+  const action=(pt,en,icon,run)=>{
+   const b=commands.createEl('button',{cls:'writer-v8-home-action',attr:{type:'button'}});
+   const label=b.createSpan({cls:'writer-v8-home-action-icon'});
+   const setIcon=require('obsidian').setIcon;
+   if(typeof setIcon==='function')setIcon(label,icon);
+   b.createSpan({text:writerUi(pt,en)});
+   b.addEventListener('click',run);
+  };
+  action('Projetos','Projects','notebook-pen',()=>this.plugin.openProjects());
+  action('Continuar livro','Continue book','book-open',()=>this.plugin.openProjects('structure'));
+  action('Nova cena','New scene','file-plus',async()=>{
+   await this.plugin.openProjects('scenes');
+   const v=this.app.workspace.getLeavesOfType(PROJECT_VIEW)[0]?.view;
+   if(v?.currentProject)v.addScene(v.currentProject);
+  });
+  action('Revisão','Review','spell-check',()=>this.plugin.openReview());
+  action('Calendário','Calendar','calendar-days',()=>void this.plugin.writerCalendarOpen?.());
+  action('Estudos','Study','graduation-cap',()=>void this.plugin.writerStudyOpen?.());
+  const toolbar=this.contentEl.createDiv({cls:'writer-v903-widgets-toolbar'});
+  toolbar.createEl('strong',{text:writerUi('Meu painel','My dashboard')});
+  const add=toolbar.createEl('button',{cls:'writer-v903-widget-add',attr:{type:'button'}});
+  require('obsidian').setIcon?.(add.createSpan({cls:'writer-v903-button-icon'}),'plus');
+  add.createSpan({text:writerUi('Adicionar widgets','Add widgets')});
+  add.addEventListener('click',()=>this.manageWidgets());
+  const grid=this.contentEl.createDiv({cls:'writer-v8-home-grid writer-v925-grid'});
+  grid.dataset.widgetAlignment=widgetCfg.homeWidgetAlignment==='free'?'free':'grid';
+  const markdownFiles=writerV16HomeMarkdownSnapshot(this.app.vault);
+  const cards={
+   calendar:p=>this.renderCalendarWidget(p),
+   soundscape:p=>writerV91HomeSoundscape(this,p),
+   continue:p=>this.renderContinue(p),
+   recent:p=>this.renderFiles(p,'recent',markdownFiles),
+   favorites:p=>this.renderFiles(p,'favorites'),
+   webBookmarks:p=>this.renderWebBookmarks(p),
+   quick:p=>this.renderQuick(p),
+   stats:p=>this.renderStats(p,markdownFiles()),
+   activity:p=>this.renderActivity(p,markdownFiles()),
+   random:p=>this.renderRandom(p,markdownFiles()),
+   tags:p=>this.renderTags(p,markdownFiles()),
+   goal:p=>this.renderGoal(p),
+   gallery:p=>this.renderGallery(p),
+   quotes:p=>this.renderQuotes(p),
+   today:p=>this.renderToday(p,markdownFiles()),
+    books:p=>{
+     const card=this.card(p,'books','Meus livros','My books');
+     if(typeof writerV10RenderBookshelfWidget==='function')writerV10RenderBookshelfWidget(this,card,markdownFiles());
+     else card.createEl('p',{text:writerUi('Abra a biblioteca pelos comandos.','Open bookshelf using commands.')});
+    },
+    trash:p=>writerV10RenderTrashWidget(this,p),
+    reading:p=>writerV10RenderReadingWidget(this,p),
+    zotero:p=>writerV10RenderZoteroWidget(this,p,markdownFiles())
+  };
+  for(const key of widgetCfg.homeOrder){
+   if(!WRITER_V8_HOME_SECTIONS.includes(key)||widgetCfg.homeHidden.includes(key))continue;
+   cards[key]?.(grid);
+   const card=[...grid.children].find(el=>el.getAttribute('data-section')===key);
+   if(card){
+    const size=widgetCfg.homeWidgetSizes?.[key]||'normal';
+    card.dataset.widgetSize=size;
+    const frame=widgetCfg.homeWidgetFrames?.[key];
+    if(frame)this.applyWidgetFrame(grid,card,frame);
+   }
+  }
+  this.installWidgetGrid(grid);
+  this.installWidgetDragging(grid);
+  this.installWidgetResizing(grid);
+  if(!grid.querySelector('[data-section]')){
+   const empty=grid.createDiv({cls:'writer-v903-widgets-empty'});
+   empty.createEl('p',{text:writerUi('Sua homepage está vazia. Adicione widgets para começar.','Your dashboard is empty. Add some widgets to get started.')});
+   const restore=empty.createEl('button',{text:writerUi('Adicionar widgets','Add widgets')});
+   restore.addEventListener('click',()=>this.manageWidgets());
+  }
+  this.contentEl.scrollTop=scroll;
+ }
+ applyWidgetFrame(grid,card,frame){
+  const isMobile=writerV8HomeIsMobile(this.plugin)||grid.clientWidth<=760;
+  if(isMobile)return;
+  const columns=Math.min(12,Math.max(3,Math.round(frame.columns||6)));
+  card.style.gridColumnEnd='span '+columns;
+  if(frame.height>0){
+   card.style.height=frame.height+'px';
+   card.classList.add('writer-v1205-manual-height');
+  }
+  if(grid.dataset.widgetAlignment==='free'&&frame.width>0){
+   card.style.width=frame.width+'px';
+   card.style.maxWidth='100%';
+   card.style.justifySelf='start';
+  }
+ }
+ setWidgetAlignment(alignment){
+  if(!['grid','free'].includes(alignment))return;
+  this.widgetPreferences().homeWidgetAlignment=alignment;
+  this.saveSoon();this.render();
+ }
+ resetWidgetFrame(key){
+  const prefs=this.widgetPreferences();
+  if(!prefs.homeWidgetFrames)return;
+  delete prefs.homeWidgetFrames[key];
+  this.saveSoon();this.render();
+ }
+ installWidgetResizing(grid){
+  if(writerV8HomeIsMobile(this.plugin)||grid.clientWidth<640)return;
+  const prefs=this.widgetPreferences();
+  for(const card of grid.querySelectorAll('[data-section]')){
+   const key=card.getAttribute('data-section');
+   if(!WRITER_V8_HOME_SECTIONS.includes(key))continue;
+   card.classList.add('writer-v1205-resize-card');
+   for(const direction of ['right','bottom','corner']){
+    const handle=card.createEl('button',{cls:'writer-v1205-resize-handle writer-v1205-resize-'+direction,
+     attr:{type:'button','aria-label':writerUi('Redimensionar '+direction+' de '+key,'Resize '+direction+' of '+key),
+      title:writerUi('Arraste para redimensionar','Drag to resize')}});
+    const horizontal=direction!=='bottom',vertical=direction!=='right';
+    const commit=(columns,height,width)=>{
+     const frames=prefs.homeWidgetFrames||(prefs.homeWidgetFrames={});
+     frames[key]={columns,height,width};
+     this.saveSoon();
+    };
+    const metrics=()=>{
+     const gap=parseFloat(getComputedStyle(grid).columnGap)||12;
+     const step=Math.max(1,(grid.clientWidth-gap*11)/12+gap);
+     const minColumns=writerV131MinWidgetColumns(grid.clientWidth,gap);
+     const r=card.getBoundingClientRect();
+     const f=prefs.homeWidgetFrames?.[key]||{};
+     return {r,step,minColumns,columns:Math.max(minColumns,f.columns||Math.round((r.width+gap)/step)),height:f.height||Math.round(r.height),width:f.width||Math.round(r.width)};
+    };
+    const adjust=(start,dx,dy)=>{
+     const free=grid.dataset.widgetAlignment==='free';
+     const nextWidth=Math.max(Math.min(grid.clientWidth,205),start.r.width+dx);
+     const columns=horizontal?Math.max(start.minColumns,Math.min(12,Math.round((nextWidth+12)/start.step))):start.columns;
+     const height=vertical?Math.max(92,Math.min(1100,Math.round(start.height+dy))):start.height;
+     const width=horizontal?Math.max(Math.min(grid.clientWidth,205),Math.min(1800,Math.round(nextWidth))):start.width;
+     card.style.gridColumnEnd='span '+columns;
+     if(free&&horizontal){card.style.width=width+'px';card.style.maxWidth='100%';card.style.justifySelf='start';}
+     if(!free){card.style.removeProperty('width');card.style.removeProperty('justify-self');}
+     if(vertical){card.style.height=height+'px';card.classList.add('writer-v1205-manual-height');}
+     return {columns,height,width};
+    };
+    handle.addEventListener('pointerdown',event=>{
+     if(event.button!==undefined&&event.button!==0)return;
+     event.preventDefault();event.stopPropagation();
+     const start=metrics(),origin={x:event.clientX,y:event.clientY};
+     let result={columns:start.columns,height:start.height,width:start.width};
+     card.classList.add('writer-v1205-resizing');
+     handle.setPointerCapture?.(event.pointerId);
+     const move=e=>{result=adjust(start,e.clientX-origin.x,e.clientY-origin.y);};
+     const finish=e=>{
+      handle.removeEventListener('pointermove',move);
+      handle.removeEventListener('pointerup',finish);
+      handle.removeEventListener('pointercancel',cancel);
+      card.classList.remove('writer-v1205-resizing');
+      handle.releasePointerCapture?.(e.pointerId);
+      commit(result.columns,result.height,result.width);
+     };
+     const cancel=e=>{
+      handle.removeEventListener('pointermove',move);
+      handle.removeEventListener('pointerup',finish);
+      handle.removeEventListener('pointercancel',cancel);
+      card.classList.remove('writer-v1205-resizing');
+      handle.releasePointerCapture?.(e.pointerId);
+      this.render();
+     };
+     handle.addEventListener('pointermove',move);
+     handle.addEventListener('pointerup',finish);
+     handle.addEventListener('pointercancel',cancel);
+    });
+    handle.addEventListener('keydown',event=>{
+     if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(event.key))return;
+     event.preventDefault();event.stopPropagation();
+     const m=metrics(),factor=event.shiftKey?3:1;
+     const dx=horizontal?factor*(event.key==='ArrowLeft'?-m.step:event.key==='ArrowRight'?m.step:0):0;
+     const dy=vertical?factor*(event.key==='ArrowUp'?-24:event.key==='ArrowDown'?24:0):0;
+     const result=adjust(m,dx,dy);
+     commit(result.columns,result.height,result.width);
+    });
+   }
+  }
+ }
+ installWidgetGrid(grid){
+  this.widgetFrameQueue?.dispose();
+  this.widgetResizeObserver?.disconnect();this.widgetResizeObserver=null;
+  const generation=this.homeRenderGeneration;
+  const update=()=>{
+   if(this.disposed||this.homeRenderGeneration!==generation||!grid.isConnected)return;
+   // Responsive widths depend on the pane, never the overall monitor.
+   // Reset stale inline frame widths while compact, restore when expanded.
+   const compact=grid.clientWidth<=760;
+   if(grid.dataset.basicCompactLayout!==String(compact)){
+    grid.dataset.basicCompactLayout=String(compact);
+    for(const card of grid.querySelectorAll('[data-section]')){
+     if(compact){
+      card.style.removeProperty('grid-column-end');
+      card.style.removeProperty('width');
+      card.style.removeProperty('justify-self');
+     }else{
+      const key=card.getAttribute('data-section');
+      const frame=this.widgetPreferences().homeWidgetFrames?.[key];
+      if(frame)this.applyWidgetFrame(grid,card,frame);
+     }
+    }
+   }
+   const gap=parseFloat(getComputedStyle(grid).rowGap)||10;
+   const row=8;
+   const measurements=[...grid.querySelectorAll('[data-section]')].map(card=>[card,card.getBoundingClientRect().height]);
+   for(const [card,height] of measurements){
+    const span='span '+Math.max(1,Math.ceil((height+gap)/(row+gap)));
+    if(height>0&&card.style.gridRowEnd!==span)card.style.gridRowEnd=span;
+   }
+  };
+  // Each widget uses its own measured height, so short widgets fill available space.
+  const host=grid.ownerDocument?.defaultView;
+  const request=host?.requestAnimationFrame?.bind(host)||requestAnimationFrame;
+  const cancel=host?.cancelAnimationFrame?.bind(host)||cancelAnimationFrame;
+  const queue=this.widgetFrameQueue=writerV16HomeFrameQueue(request,cancel,update);
+  const Observer=host?.ResizeObserver||(typeof ResizeObserver==='function'?ResizeObserver:null);
+  if(Observer){
+   this.widgetResizeObserver=new Observer(()=>queue.schedule());
+   for(const card of grid.querySelectorAll('[data-section]'))this.widgetResizeObserver.observe(card);
+   this.widgetResizeObserver.observe(grid);
+  }
+  queue.schedule();
+ }
+ setWidgetSize(key,size){
+  if(!WRITER_V8_HOME_SECTIONS.includes(key)||!['compact','normal','wide'].includes(size))return;
+  const cfg=this.widgetPreferences();
+  cfg.homeWidgetSizes=cfg.homeWidgetSizes||{};
+  cfg.homeWidgetSizes[key]=size;
+  this.saveSoon();this.render();
+ }
+ reorderWidget(source,target,after=false){
+  if(!source||!target||source===target)return;
+  const order=this.widgetPreferences().homeOrder;
+  const old=order.indexOf(source);
+  if(old<0||!order.includes(target))return;
+  order.splice(old,1);
+  order.splice(order.indexOf(target)+(after?1:0),0,source);
+  this.saveSoon();this.render();
+ }
+ setWidgetVisible(key,visible){
+  const cfg=this.widgetPreferences();
+  if(!WRITER_V8_HOME_SECTIONS.includes(key))return;
+  cfg.homeHidden=cfg.homeHidden.filter(id=>id!==key);
+  if(!visible)cfg.homeHidden.push(key);
+  this.saveSoon();this.render();
+ }
+ moveWidget(key,direction){
+  const cfg=this.widgetPreferences(),order=cfg.homeOrder;
+  const visible=order.filter(id=>WRITER_V8_HOME_SECTIONS.includes(id)&&!cfg.homeHidden.includes(id));
+  const index=visible.indexOf(key),other=visible[index+direction];
+  if(index<0||!other)return;
+  const a=order.indexOf(key),b=order.indexOf(other);
+  [order[a],order[b]]=[order[b],order[a]];
+  this.saveSoon();this.render();
+ }
+ widgetControls(parent,key){
+  const actions=parent.createDiv({cls:'writer-v8-home-card-order writer-v903-widget-controls'});
+  const handle=actions.createEl('button',{cls:'writer-v924-drag-handle',attr:{type:'button',draggable:'true',title:writerUi('Arraste para reorganizar','Drag to rearrange'),'aria-label':writerUi('Arraste para reorganizar','Drag to rearrange')}});
+  require('obsidian').setIcon?.(handle,'grip-vertical');
+  const menu=actions.createEl('button',{cls:'writer-v924-widget-menu',attr:{type:'button',title:writerUi('Opções do widget','Widget options'),'aria-label':writerUi('Opções do widget','Widget options')}});
+  require('obsidian').setIcon?.(menu,'ellipsis');
+  menu.addEventListener('click',event=>{
+   const popup=new (require('obsidian').Menu)();
+   for(const [direction,icon,pt,en] of [[-1,'arrow-up','Mover para cima','Move earlier'],[1,'arrow-down','Mover para baixo','Move later']]){
+    popup.addItem(item=>item.setTitle(writerUi(pt,en)).setIcon(icon).onClick(()=>this.moveWidget(key,direction)));
+   }
+   popup.addSeparator();
+   for(const [size,pt,en] of [['compact','Compacto','Compact'],['normal','Normal','Normal'],['wide','Largo','Wide']]){
+    popup.addItem(item=>item.setTitle(writerUi(pt,en)).setIcon(this.widgetPreferences().homeWidgetSizes?.[key]===size?'check':'rectangle-horizontal').onClick(()=>this.setWidgetSize(key,size)));
+   }
+   popup.addSeparator();
+   popup.addItem(item=>item.setTitle(writerUi('Encaixar na grade','Snap to grid')).setIcon(this.widgetPreferences().homeWidgetAlignment==='grid'?'check':'grid-3x3').onClick(()=>this.setWidgetAlignment('grid')));
+   popup.addItem(item=>item.setTitle(writerUi('Tamanho livre','Free size')).setIcon(this.widgetPreferences().homeWidgetAlignment==='free'?'check':'move').onClick(()=>this.setWidgetAlignment('free')));
+   popup.addItem(item=>item.setTitle(writerUi('Restaurar dimensões','Reset dimensions')).setIcon('rotate-ccw').onClick(()=>this.resetWidgetFrame(key)));
+   popup.addSeparator();
+   popup.addItem(item=>item.setTitle(writerUi('Remover widget','Remove widget')).setIcon('x').onClick(()=>this.setWidgetVisible(key,false)));
+   popup.showAtMouseEvent(event);
+  });
+  return actions;
+ }
+ installWidgetDragging(grid){
+  const cards=[...grid.querySelectorAll('[data-section]')];
+  let dragged=null,selected=null;
+  const clear=()=>cards.forEach(card=>card.classList.remove('writer-v924-drop-before','writer-v924-drop-after','writer-v924-dragging','writer-v925-selected'));
+  for(const card of cards){
+   const key=card.getAttribute('data-section');
+   const grip=card.querySelector('.writer-v924-drag-handle');
+   if(!grip)continue;
+   grip.addEventListener('keydown',event=>{
+    if(!['ArrowUp','ArrowDown'].includes(event.key)||event.altKey||event.ctrlKey||event.metaKey)return;
+    event.preventDefault();this.moveWidget(key,event.key==='ArrowUp'?-1:1);
+   });
+   grip.setAttribute('aria-keyshortcuts','ArrowUp ArrowDown');
+   grip.addEventListener('dragstart',event=>{
+    dragged=key;card.classList.add('writer-v924-dragging');
+    if(event.dataTransfer){event.dataTransfer.effectAllowed='move';event.dataTransfer.setData('text/plain',key);}
+   });
+   grip.addEventListener('dragend',()=>{dragged=null;clear();});
+   card.addEventListener('dragover',event=>{
+    if(!dragged||dragged===key)return;
+    event.preventDefault();
+    const bounds=card.getBoundingClientRect();
+    const after=writerV131WidgetDropAfter(bounds,event.clientX,event.clientY);
+    clear();card.classList.add(after?'writer-v924-drop-after':'writer-v924-drop-before');
+    if(event.dataTransfer)event.dataTransfer.dropEffect='move';
+   });
+   card.addEventListener('drop',event=>{
+    if(!dragged||dragged===key)return;
+    event.preventDefault();
+    const bounds=card.getBoundingClientRect();
+    this.reorderWidget(dragged,key,writerV131WidgetDropAfter(bounds,event.clientX,event.clientY));
+    dragged=null;clear();
+   });
+   // Tap a grip, then tap another widget: works on touch and keyboard.
+   grip.addEventListener('click',event=>{
+    event.preventDefault();
+    if(selected===key){selected=null;clear();return;}
+    selected=key;clear();card.classList.add('writer-v925-selected');
+   });
+   grip.addEventListener('keydown',event=>{
+    if(event.key==='Escape'){selected=null;clear();}
+   });
+   card.addEventListener('click',event=>{
+    if(!selected||selected===key||event.target.closest('.writer-v903-widget-controls'))return;
+    // Only use the heading, avoiding accidental moves while editing widget contents.
+    if(!event.target.closest('.writer-v903-widget-heading,.writer-v903-calendar-controls'))return;
+    this.reorderWidget(selected,key,false);selected=null;
+   });
+  }
+ }
+ manageWidgets(){
+  const view=this,plugin=this.plugin,ModalClass=require('obsidian').Modal;
+  const modal=new ModalClass(this.app);
+  modal.onOpen=()=>{
+   modal.setTitle(writerUi('Widgets da homepage','Homepage widgets'));
+   const root=modal.contentEl;
+   root.empty();root.addClass('writer-v903-widget-gallery');
+   root.createEl('p',{cls:'setting-item-description',text:writerUi('Ative ou oculte painéis. Arraste pela alça no cabeçalho para reorganizar; use o menu para mover sem arrastar.','Show or hide panels. Drag the header handle to reorder, or use the menu for keyboard-friendly movement.')});
+    const presets=plugin.settings.v8Finish.homePresets||(plugin.settings.v8Finish.homePresets=[]);
+    const section=root.createDiv({cls:'writer-v101-home-presets'});
+    section.createEl('h4',{text:writerUi('Presets do painel','Dashboard presets')});
+    const picker=section.createEl('select',{attr:{'aria-label':writerUi('Preset de widgets','Widget preset')}});
+    picker.createEl('option',{text:writerUi('Selecione um preset','Choose preset'),value:''});
+    for(const item of presets){const option=picker.createEl('option',{text:item.name});option.value=item.name;}
+    let inputName='';
+    const input=section.createEl('input',{attr:{type:'text',maxlength:'60',placeholder:writerUi('Nome do preset','Preset name')}});
+    input.addEventListener('input',()=>{inputName=input.value.slice(0,60).trim();});
+    const save=section.createEl('button',{text:writerUi('Salvar preset atual','Save current layout')});
+    save.addEventListener('click',async()=>{
+     if(!inputName)return;
+     const prefs=view.widgetPreferences();
+     const record={name:inputName,order:[...prefs.homeOrder],hidden:[...prefs.homeHidden],sizes:{...prefs.homeWidgetSizes},frames:{...prefs.homeWidgetFrames},alignment:prefs.homeWidgetAlignment||'grid'};
+     const at=presets.findIndex(x=>x.name===inputName);
+     if(at>=0)presets[at]=record;else presets.push(record);
+     plugin.settings.v8Finish.homePresets=presets.slice(-12);
+     await plugin.saveSettings();modal.onOpen();
+    });
+    const apply=section.createEl('button',{text:writerUi('Aplicar','Apply')});
+    apply.addEventListener('click',()=>{
+     const preset=presets.find(x=>x.name===picker.value);if(!preset)return;
+     const prefs=view.widgetPreferences();
+     prefs.homeOrder=[...new Set([...preset.order,...WRITER_V8_HOME_SECTIONS])];
+     prefs.homeHidden=[...preset.hidden];
+     prefs.homeWidgetSizes={...preset.sizes};
+     prefs.homeWidgetFrames={...(preset.frames||{})};
+     prefs.homeWidgetAlignment=preset.alignment==='free'?'free':'grid';
+     view.saveSoon();view.render();modal.close();
+    });
+    const remove=section.createEl('button',{text:writerUi('Excluir preset','Delete preset')});
+    remove.addEventListener('click',async()=>{
+     const at=presets.findIndex(x=>x.name===picker.value);if(at<0)return;
+     presets.splice(at,1);await plugin.saveSettings();modal.onOpen();
+    });
+   for(const key of WRITER_V8_HOME_SECTIONS){
+    const meta=WRITER_V8_HOME_CATALOG[key],item=root.createDiv({cls:'writer-v903-gallery-item'});
+    const glyph=item.createSpan({cls:'writer-v903-gallery-icon'});
+    require('obsidian').setIcon?.(glyph,meta[0]);
+    const summary=item.createDiv({cls:'writer-v903-gallery-description'});
+    summary.createEl('strong',{text:writerUi(meta[1],meta[2])});
+    summary.createEl('small',{text:writerUi(meta[3],meta[4])});
+    const hidden=view.widgetPreferences().homeHidden.includes(key);
+    const button=item.createEl('button',{cls:'writer-v903-gallery-toggle',text:hidden?writerUi('Adicionar','Add'):writerUi('Remover','Remove'),attr:{type:'button','aria-pressed':String(!hidden)}});
+    button.addEventListener('click',()=>{
+     const visible=view.widgetPreferences().homeHidden.includes(key);
+     view.setWidgetVisible(key,visible);
+     button.setText(visible?writerUi('Remover','Remove'):writerUi('Adicionar','Add'));
+     button.setAttribute('aria-pressed',String(visible));
+    });
+   }
+  };
+  modal.open();
+ }
+ card(parent,key,pt,en){
+  const section=parent.createDiv({cls:'writer-v8-home-card writer-v903-widget',attr:{'data-section':key,role:'region','aria-label':writerUi(pt,en)}});
+  const top=section.createDiv({cls:'writer-v8-home-card-header'});
+  if(key==='search'){top.createEl('h3',{text:writerUi(pt,en)});return section;}
+  const heading=top.createDiv({cls:'writer-v903-widget-heading'});
+  const symbol=heading.createSpan({cls:'writer-v903-widget-icon'});
+  require('obsidian').setIcon?.(symbol,WRITER_V8_HOME_CATALOG[key]?.[0]||'layout-dashboard');
+  heading.createEl('h3',{text:writerUi(pt,en)});
+  this.widgetControls(top,key);
+  return section;
+ }
+ renderCalendarWidget(parent){
+  const shell=parent.createDiv({cls:'writer-v903-calendar-widget',attr:{'data-section':'calendar',role:'region','aria-label':writerUi('Relógio e calendário','Clock and calendar')}});
+  const hover=shell.createDiv({cls:'writer-v903-calendar-controls'});
+  const heading=hover.createDiv({cls:'writer-v903-widget-heading'});
+  const icon=heading.createSpan({cls:'writer-v903-widget-icon'});
+  require('obsidian').setIcon?.(icon,'calendar-days');
+  heading.createEl('h3',{text:writerUi('Relógio e calendário','Clock and calendar')});
+  this.widgetControls(hover,'calendar');
+  const schedule=shell.createDiv({cls:'writer-v8-home-clock-card'});
+  writerV8HomeRenderCalendar(this,schedule);
+ }
+ renderContinue(parent){
+  const box=this.card(parent,'continue','Continuar escrevendo','Continue writing');
+  const path=this.plugin.settings.lastLongformProject||'';
+  if(path)box.createEl('p',{text:String(path).split('/').pop().replace(/\.md$/,'').slice(0,100),cls:'writer-v8-home-muted'});
+  box.createEl('button',{text:writerUi('Abrir estrutura do livro','Open book structure')})
+   .addEventListener('click',()=>this.plugin.openProjects('structure'));
+  box.createEl('button',{text:writerUi('Abrir quadro de cenas','Open scene board')})
+   .addEventListener('click',()=>this.plugin.openProjects('board'));
+ }
+ syncSurfingVisibility(){
+  const surfing=writerV8HomeSurfing(this.plugin);
+  const active=Boolean(!writerV8HomeIsMobile(this.plugin)&&surfing!==this.homeSurfingFailed&&typeof surfing?.addHeaderAndSearchBar==='function');
+  if(active!==this.homeSurfingEnabled||(active&&this.homeSurfingMount?.surfing!==surfing))this.render();
+ }
+ homeSearchWebMode(){
+  if(!this.homeSurfingInput?.isConnected){
+   new Notice(writerUi('Ative o Surfing para pesquisar na web pela homepage.','Enable Surfing to use the homepage web search.'));
+   return false;
+  }
+  this.homeSurfingInput.focus({preventScroll:true});
+  return true;
+ }
+ disposeSurfingBar(){
+  const mount=this.homeSurfingMount;
+  this.homeSurfingMount=null;this.homeSurfingInput=null;
+  if(!mount)return;
+  // Surfing's private mount API does not return its HeaderBar or suggester.
+  // Blur the owned input before detaching it so Surfing can close suggestions
+  // and release its own keymap scope and positioning resources.
+  const input=mount.input||mount.host.querySelector?.('input.wb-search-bar');
+  try{if(mount.onInput)input?.removeEventListener?.('input',mount.onInput);}
+  catch(error){console.warn('[Basic AI] Surfing input cleanup:',error);}
+  try{input?.blur?.();}
+  catch(error){console.warn('[Basic AI] Surfing blur cleanup:',error);}
+  finally{mount.host.remove?.();}
+ }
+ renderSurfingBar(parent){
+  this.disposeSurfingBar();
+  if(this.disposed)return;
+  const surfing=writerV8HomeSurfing(this.plugin);
+  if(!surfing||typeof surfing.addHeaderAndSearchBar!=='function'){
+   // Surfing's HeaderBar is an internal component, not a public API.
+   // Do not silently replace it with a second, imitation search field.
+   this.homeSurfingEnabled=false;
+   return;
+  }
+  const host=parent.createDiv({cls:'writer-v1205-native-surfing-host',
+   attr:{role:'search','aria-label':writerUi('Pesquisa nativa do Surfing','Surfing native search')}});
+  const mount={surfing,host,input:null,onInput:null};
+  this.homeSurfingMount=mount;
+  // Use Surfing's own HeaderBar and suggestions, without duplicating its
+  // search/URL engine. Adapt an empty view only for the private integration
+  // method; the actual Basic homepage view type and leaf remain unchanged.
+  const adapter={
+   getViewType:()=> 'empty',
+   titleContainerEl:host,
+   contentEl:{children:[{hasClass:()=>false}],toggleClass:()=>{}},
+   leaf:this.leaf,
+   scope:{register:()=>{}} // avoid leaking Surfing "/" bindings on rerender
+  };
+  try{
+   surfing.addHeaderAndSearchBar(adapter);
+   const input=host.querySelector('input.wb-search-bar');
+   if(!input)throw Error('Surfing did not mount its native address bar.');
+   mount.input=input;
+   input.value=this.homeSurfingQuery||'';
+   mount.onInput=()=>{
+    if(!this.disposed&&this.homeSurfingMount===mount&&input.isConnected)
+     this.homeSurfingQuery=input.value.slice(0,2048);
+   };
+   input.addEventListener('input',mount.onInput);
+   this.homeSurfingInput=input;
+   this.homeSurfingEnabled=true;
+  }catch(error){
+   this.disposeSurfingBar();
+   this.homeSurfingEnabled=false;
+   this.homeSurfingFailed=surfing;
+   console.warn('[Basic AI] Native Surfing header unavailable:',error);
+  }
+ }
+ renderSearch(parent){
+  const box=this.card(parent,'search','Buscar no cofre','Search vault');
+  box.addClass('writer-v901-home-search-card');
+  const input=box.createEl('input',{cls:'writer-v8-home-search',attr:{type:'search',placeholder:writerUi('Pesquisar notas por nome, caminho ou conteúdo indexado…','Find notes by name, path or indexed content…'),'aria-label':writerUi('Buscar notas','Search notes'),autocomplete:'off'}});
+  this.homeSearchInput=input;
+  const generation=this.homeRenderGeneration;
+  const current=()=>!this.disposed&&this.homeRenderGeneration===generation&&this.homeSearchInput===input;
+  const results=box.createDiv({cls:'writer-v8-home-file-list writer-v901-home-search-results',attr:{role:'list','aria-label':writerUi('Notas encontradas','Matching notes')}});
+  const status=box.createDiv({cls:'writer-v901-home-search-status',attr:{role:'status','aria-live':'polite','aria-atomic':'true'}});
+  // A leading slash is a web-only command, not part of the search term.
+  const slashSearch=()=>input.value.trimStart().startsWith('/');
+  const slashTerm=()=>input.value.trimStart().slice(1).trim();
+  let matches=[],selected=0;
+  const select=(index,scroll=false)=>{
+   if(!matches.length)return;
+   selected=(index+matches.length)%matches.length;
+   for(const [i,row] of [...results.children].entries()){
+    row.classList.toggle('is-selected',i===selected);
+    row.setAttribute('aria-current',String(i===selected));
+   }
+   const target=results.children[selected];
+   if(scroll)target?.scrollIntoView?.({block:'nearest'});
+   const file=matches[selected];
+   status.setText(writerUi('Selecionada ','Selected ')+(selected+1)+' / '+matches.length+' · '+file.path+' · '+writerUi('Enter para abrir','Enter to open'));
+  };
+  const draw=(preserve=false)=>{
+   if(!current())return;
+   clearTimeout(this.homeSearchTimer);this.homeSearchTimer=null;
+   const previous=preserve?matches[selected]?.path:'';
+   results.empty();results.hidden=true;status.hidden=true;
+   const q=input.value.trim();
+   if(!q){matches=[];selected=0;return;}
+   if(slashSearch()){
+    matches=[];selected=0;status.hidden=false;
+    status.setText(slashTerm()?writerUi('Enter para pesquisar na web pelo Visualizador Web.','Enter to search the web in Web Viewer.'):
+     writerUi('Digite uma pesquisa após /.','Enter a search after /.'));
+    return; // Never search or show vault notes in slash mode.
+   }
+   const files=this.app.vault.getMarkdownFiles?.()||[];
+   matches=writerV8HomeSearch(files,q,this.app.metadataCache,12);
+   if(previous)selected=Math.max(0,matches.findIndex(file=>file.path===previous));
+   else selected=0;
+   results.hidden=false;status.hidden=false;
+   if(!matches.length){
+    results.createEl('p',{cls:'writer-v8-home-muted',text:writerUi('Nenhuma nota encontrada.','No matching notes.')});
+    status.setText(writerUi('Tente outro termo.','Try another search term.'));
+    return;
+   }
+   for(const [index,file] of matches.entries()){
+    const row=results.createDiv({cls:'writer-v8-home-file-row writer-v901-home-result',attr:{role:'listitem',title:file.path}});
+    const open=row.createEl('button',{cls:'writer-v8-home-file-link writer-v901-home-result-open',attr:{type:'button',title:file.path,'aria-label':writerUi('Abrir nota: ','Open note: ')+file.path}});
+    const glyph=open.createSpan({cls:'writer-v901-home-result-icon',attr:{'aria-hidden':'true'}});
+    require('obsidian').setIcon?.(glyph,'file-text');
+    const meta=open.createSpan({cls:'writer-v901-home-result-text'});
+    meta.createSpan({cls:'writer-v901-home-result-title',text:file.basename||file.name||writerUi('Sem título','Untitled')});
+    meta.createSpan({cls:'writer-v901-home-result-path',text:file.path});
+    const openHint=open.createSpan({cls:'writer-v901-home-result-arrow',attr:{'aria-hidden':'true'}});
+    require('obsidian').setIcon?.(openHint,'arrow-up-right');
+    open.addEventListener('click',()=>this.openFile(file));
+    row.addEventListener('pointerenter',()=>select(index,false));
+    const favorite=cfgStar(this.plugin.settings.v8Finish.homeFavorites,file.path);
+    row.createEl('button',{text:favorite?'★':'☆',cls:'writer-v8-home-star writer-v901-home-result-star',attr:{type:'button',title:writerUi(favorite?'Remover dos favoritos':'Adicionar aos favoritos',favorite?'Remove from favorites':'Add to favorites'),'aria-label':writerUi('Favoritar nota: ','Toggle favorite for: ')+file.path,'aria-pressed':String(favorite)}})
+     .addEventListener('click',()=>{writerV8HomeToggleFavorite(this.plugin,file.path);this.saveSoon();draw(true);});
+   }
+   select(selected,false);
+  };
+  // Keep the original vault search and its legacy direct-URL opening shortcut,
+  // but never display a second browser mode selector inside this search card.
+  const web=box.createDiv({cls:'writer-v8-home-web-links'});web.hidden=true;
+  const link=web.createEl('button',{text:writerUi('Abrir endereço','Open address'),attr:{type:'button'}});link.hidden=true;
+  const updateLink=()=>{
+   const webOnly=slashSearch(),url=!webOnly&&writerV8HomeValidURL(input.value);
+   web.hidden=!(webOnly||url);link.hidden=web.hidden;
+   link.setText(webOnly?writerUi('Pesquisar na web','Search the web'):writerUi('Abrir endereço','Open address'));
+   link.disabled=webOnly&&!slashTerm();
+  };
+  let navigating=false;
+  const open=async()=>{
+   if(!current()||navigating)return;
+   navigating=true;link.disabled=true;
+   try{
+    if(slashSearch())await writerV8HomeOpenNativeSearch(this.plugin,slashTerm(),current);
+    else await writerV8HomeOpenURL(this.plugin,input.value,current);
+   }catch(error){if(current())new Notice(writerUi('Não foi possível abrir: ','Unable to open: ')+String(error.message||error).slice(0,160));}
+   finally{navigating=false;if(current())updateLink();}
+  };
+  link.addEventListener('click',()=>void open());
+  input.addEventListener('keydown',event=>{
+   if(event.isComposing||event.keyCode===229)return;
+   if(this.homeSearchTimer!==null&&['ArrowDown','ArrowUp','Enter'].includes(event.key))draw();
+   if(event.key==='ArrowDown'&&matches.length){event.preventDefault();select(selected+1,true);return;}
+   if(event.key==='ArrowUp'&&matches.length){event.preventDefault();select(selected-1,true);return;}
+   if(event.key==='Enter'){
+    if(slashSearch()){
+     event.preventDefault();
+     if(slashTerm())void open();
+     return;
+    }
+    const url=writerV8HomeValidURL(input.value);
+    if(url){event.preventDefault();void open();return;}
+    if(matches.length){event.preventDefault();this.openFile(matches[selected]);return;}
+   }
+   if(event.key==='Escape'&&input.value){
+    event.preventDefault();input.value='';updateLink();draw();
+   }
+  });
+  input.addEventListener('input',()=>{
+   if(!current())return;
+   updateLink();
+   if(!input.value.trim()||slashSearch()){draw();return;}
+   results.hidden=true;status.hidden=true;
+   clearTimeout(this.homeSearchTimer);
+   const timer=setTimeout(()=>{if(current()&&this.homeSearchTimer===timer)draw();},100);
+   this.homeSearchTimer=timer;
+  });
+  const focus=event=>{if(event.key==='/'&&!event.ctrlKey&&!event.metaKey&&!event.altKey&&
+    !/INPUT|TEXTAREA/.test(event.target?.tagName||'')){event.preventDefault();input.focus();}};
+  box.addEventListener('keydown',focus);
+  draw();
+ }
+ renderWebBookmarks(parent){
+  const box=this.card(parent,'webBookmarks','Favoritos da web','Web bookmarks');
+  const generation=this.homeRenderGeneration,session=this.homeSession;
+  const current=()=>!this.disposed&&this.homeSession===session&&this.homeRenderGeneration===generation&&box.isConnected;
+  const cfg=this.plugin.settings.v8Finish,list=cfg.homeWebBookmarks||[];
+  box.addClass('writer-v1205-bookmarks-widget');
+  const tools=box.createDiv({cls:'writer-v1203-web-bookmarks-tools'});
+  const count=tools.createSpan({cls:'writer-v1205-web-bookmark-count',
+   text:list.length===1?writerUi('1 site salvo','1 saved site'):
+   list.length+' '+writerUi('sites salvos','saved sites')});
+  const add=tools.createEl('button',{cls:'writer-v1205-add-bookmark',attr:{type:'button',
+   title:writerUi('Adicionar site favorito','Add web bookmark'),
+   'aria-label':writerUi('Adicionar site favorito','Add web bookmark')}});
+  require('obsidian').setIcon?.(add,'plus');
+  add.addEventListener('click',()=>this.editWebBookmark());
+  if(!list.length){
+   const empty=box.createDiv({cls:'writer-v1205-bookmarks-empty'});
+   const glyph=empty.createSpan();
+   require('obsidian').setIcon?.(glyph,'bookmark-plus');
+   empty.createEl('p',{text:writerUi(
+    'Adicione seus sites preferidos para abrir tudo sem sair da homepage.',
+    'Add your favorite websites for quick access from the dashboard.')});
+   const first=empty.createEl('button',{text:writerUi('Adicionar primeiro site','Add first website'),attr:{type:'button'}});
+   first.addEventListener('click',()=>this.editWebBookmark());
+   return;
+  }
+  const filters=box.createDiv({cls:'writer-home-bookmark-filters'});
+  const search=filters.createEl('input',{attr:{type:'search',maxlength:'160',autocomplete:'off',
+   placeholder:writerUi('Buscar sites…','Find websites…'),'aria-label':writerUi('Buscar favoritos da web','Find web bookmarks')}});
+  search.value=this.webBookmarkQuery||'';
+  const groupsAvailable=[...new Set(list.map(item=>item.group||''))];
+  let selectedGroup=this.webBookmarkGroup??null;
+  if(selectedGroup!==null&&!groupsAvailable.includes(selectedGroup))selectedGroup=this.webBookmarkGroup=null;
+  if(groupsAvailable.some(group=>group)){
+   const select=filters.createEl('select',{attr:{'aria-label':writerUi('Filtrar favoritos por grupo','Filter bookmarks by group')}});
+   const sorted=groupsAvailable.slice().sort((a,b)=>a.localeCompare(b,writerUi('pt-BR','en')));
+   const options=[null,...sorted];
+   for(const [index,group] of options.entries())select.createEl('option',{attr:{value:String(index)},text:
+    group===null?writerUi('Todos os grupos','All groups'):group||writerUi('Sem grupo','Ungrouped')});
+   select.value=String(options.indexOf(selectedGroup));
+   select.addEventListener('change',()=>{selectedGroup=this.webBookmarkGroup=options[Number(select.value)]??null;draw();});
+  }
+  count.setAttribute('role','status');
+  const results=box.createDiv({cls:'writer-home-bookmark-results'});
+  const expand=box.createEl('button',{cls:'writer-v1203-web-bookmarks-expand',attr:{type:'button'}});
+  expand.addEventListener('click',()=>{this.webBookmarksExpanded=!this.webBookmarksExpanded;draw();});
+  const draw=()=>{
+   const searching=!!search.value.trim(),filtered=searching||selectedGroup!==null;
+   const matching=writerHomeBookmarkResults(list,search.value,selectedGroup);
+   const shown=filtered||this.webBookmarksExpanded?matching:matching.slice(0,12);
+   count.setText(filtered?matching.length+'/'+list.length+' '+writerUi('sites encontrados','sites found'):
+    list.length===1?writerUi('1 site salvo','1 saved site'):list.length+' '+writerUi('sites salvos','saved sites'));
+   expand.hidden=filtered||list.length<=12;
+   if(!expand.hidden){
+    expand.setText(this.webBookmarksExpanded?writerUi('Mostrar menos','Show fewer'):
+     writerUi('Mostrar todos (','Show all (')+list.length+')');
+    expand.setAttribute('aria-expanded',String(!!this.webBookmarksExpanded));
+   }
+   results.empty();
+   if(!shown.length){
+    results.createEl('p',{cls:'writer-v8-home-muted',text:writerUi('Nenhum site com esses filtros.','No websites match these filters.')});
+    return;
+   }
+   const groups=new Map();
+   for(const item of shown){
+    const key=item.group||'';
+    if(!groups.has(key))groups.set(key,[]);
+    groups.get(key).push(item);
+   }
+   for(const [group,entries] of groups){
+    if(group)results.createEl('h4',{cls:'writer-v1203-web-bookmarks-heading',text:group});
+    const grid=results.createDiv({cls:'writer-v1203-web-bookmarks-grid writer-v1205-web-bookmarks-grid'});
+    for(const bookmark of entries){
+     const item=grid.createDiv({cls:'writer-v1203-web-bookmark writer-v1205-web-bookmark'});
+     const button=item.createEl('button',{cls:'writer-v1203-web-bookmark-open',attr:{
+      type:'button',title:bookmark.url,
+      'aria-label':writerUi('Abrir site: ','Open website: ')+bookmark.title}});
+     const glyph=button.createSpan({cls:'writer-v1203-web-bookmark-icon writer-v1205-bookmark-favicon'});
+     const domain=new URL(bookmark.url).hostname.replace(/^www\./,'');
+     const map=[[/youtu(?:\.be|be\.com)/,'youtube'],[/github\.com/,'github'],[/wikipedia\.org/,'book-open'],[/google\./,'search'],
+       [/reddit\.com/,'message-circle'],[/twitch\.tv/,'tv'],[/discord\.com/,'message-square']];
+     const known=map.find(([rx])=>rx.test(domain))?.[1];
+     const icon=bookmark.icon&&bookmark.icon!=='globe'?bookmark.icon:known||'globe';
+     try{require('obsidian').setIcon?.(glyph,icon);}catch(_){}
+     if(!glyph.querySelector?.('svg')){
+      glyph.empty();
+      glyph.addClass('writer-v1205-icon-fallback');
+      glyph.createSpan({cls:'writer-v1205-favicon-letter',text:String(bookmark.title||domain).slice(0,1).toLocaleUpperCase()});
+     }
+     const labels=button.createSpan({cls:'writer-v1203-web-bookmark-labels'});
+     labels.createSpan({text:bookmark.title,cls:'writer-v1203-web-bookmark-title'});
+     labels.createSpan({text:domain,cls:'writer-v1203-web-bookmark-domain'});
+     button.addEventListener('click',async()=>{
+      if(!current()||button.disabled)return;
+      button.disabled=true;
+      try{await writerV8HomeOpenURL(this.plugin,bookmark.url,current);}
+      catch(error){if(current())new Notice(String(error.message||error));}
+      finally{if(current())button.disabled=false;}
+     });
+     const more=item.createEl('button',{cls:'writer-v1203-web-bookmark-more',
+      attr:{type:'button',title:writerUi('Opções','Options'),
+       'aria-label':writerUi('Opções do favorito ','Bookmark options for ')+bookmark.title}});
+     require('obsidian').setIcon?.(more,'ellipsis');
+     more.addEventListener('click',event=>{
+      event.preventDefault();event.stopPropagation();
+      const menu=new Menu(this.app);
+      menu.addItem(i=>i.setTitle(writerUi('Editar favorito','Edit bookmark')).setIcon('pencil')
+       .onClick(()=>this.editWebBookmark(bookmark)));
+      menu.addItem(i=>i.setTitle(writerUi('Mover para cima','Move up')).setIcon('arrow-up')
+       .onClick(()=>this.moveWebBookmark(bookmark,-1)));
+      menu.addItem(i=>i.setTitle(writerUi('Mover para baixo','Move down')).setIcon('arrow-down')
+       .onClick(()=>this.moveWebBookmark(bookmark,1)));
+      menu.addSeparator?.();
+      menu.addItem(i=>i.setTitle(writerUi('Remover favorito','Remove bookmark')).setIcon('trash-2')
+       .onClick(()=>this.removeWebBookmark(bookmark)));
+      menu.showAtMouseEvent(event);
+     });
+    }
+   }
+  };
+  search.addEventListener('input',()=>{this.webBookmarkQuery=search.value;draw();});
+  draw();
+ }
+ editWebBookmark(bookmark){
+  const view=this,plugin=this.plugin,modal=new Modal(this.app);
+  const cfg=plugin.settings.v8Finish;
+  const original=(cfg.homeWebBookmarks||[]).find(x=>x.id===bookmark?.id);
+  const draft={title:bookmark?.title||'',url:bookmark?.url||'',icon:bookmark?.icon||'globe',group:bookmark?.group||''};
+  modal.onOpen=()=>{
+   modal.setTitle(original?writerUi('Editar favorito web','Edit web bookmark'):
+    writerUi('Adicionar favorito web','Add web bookmark'));
+   const root=modal.contentEl;
+   root.createEl('p',{cls:'setting-item-description',text:writerUi(
+    'Somente links HTTP e HTTPS. Os favoritos pertencem ao Basic; não alteram os favoritos do navegador.',
+    'Only HTTP and HTTPS links. These are Basic bookmarks, not browser bookmarks.')});
+   new Setting(root).setName(writerUi('Nome','Name')).addText(t=>t.setValue(draft.title)
+    .setPlaceholder('Ex.: Wikipedia').onChange(v=>{draft.title=v;}));
+   new Setting(root).setName('URL').addText(t=>t.setPlaceholder('https://example.org')
+    .setValue(draft.url).onChange(v=>{draft.url=v;}));
+   new Setting(root).setName(writerUi('Grupo (opcional)','Group (optional)'))
+    .addText(t=>t.setPlaceholder(writerUi('Pesquisa, Escrita, Estudos…','Research, Writing, Study…'))
+     .setValue(draft.group).onChange(v=>{draft.group=v;}));
+   new Setting(root).setName(writerUi('Ícone Lucide','Lucide icon'))
+    .setDesc(writerUi('Ex.: globe, book-open, search.','E.g. globe, book-open, search.'))
+    .addText(t=>t.setValue(draft.icon).onChange(v=>{draft.icon=v;}));
+   const status=root.createEl('p',{cls:'setting-item-description',attr:{role:'status'}});
+   new Setting(root).addButton(b=>b.setButtonText(writerUi('Salvar favorito','Save bookmark')).setCta()
+    .onClick(async()=>{
+     const url=writerV8HomeValidURL(draft.url);
+     if(!url){status.setText(writerUi('Insira um endereço HTTP ou HTTPS válido.','Enter a valid HTTP or HTTPS address.'));return;}
+     const list=cfg.homeWebBookmarks||(cfg.homeWebBookmarks=[]);
+     if(list.some(x=>x.url===url&&x.id!==original?.id)){
+      status.setText(writerUi('Esse site já está nos favoritos.','This site is already bookmarked.'));return;
+     }
+     if(!original&&list.length>=100){status.setText(writerUi('Limite de 100 favoritos.','100-bookmark limit reached.'));return;}
+     const safe={
+      id:original?.id||'web-'+Date.now().toString(36)+'-'+list.length,
+      url,title:String(draft.title||new URL(url).hostname).trim().replace(/[\r\n\u0000-\u001f]/g,' ').slice(0,70)||new URL(url).hostname,
+      group:String(draft.group||'').trim().replace(/[\r\n\u0000-\u001f]/g,' ').slice(0,40),
+      icon:/^[a-z][a-z0-9-]{1,45}$/.test(draft.icon)?draft.icon:'globe'
+     };
+     if(original)list[list.findIndex(x=>x.id===original.id)]=safe;
+     else list.push(safe);
+     try{await plugin.saveSettings();modal.close();view.render();}
+     catch(error){status.setText(String(error.message||error));}
+    })).addButton(b=>b.setButtonText(writerUi('Cancelar','Cancel')).onClick(()=>modal.close()));
+  };
+  modal.open();
+ }
+ moveWebBookmark(bookmark,offset){
+  const list=this.plugin.settings.v8Finish.homeWebBookmarks||[];
+  const i=list.findIndex(x=>x.id===bookmark.id),dest=i+offset;
+  if(i<0||dest<0||dest>=list.length)return;
+  [list[i],list[dest]]=[list[dest],list[i]];
+  this.saveSoon();this.render();
+ }
+ removeWebBookmark(bookmark){
+  const modal=new Modal(this.app);
+  modal.onOpen=()=>{
+   modal.setTitle(writerUi('Remover favorito web','Remove web bookmark'));
+   modal.contentEl.createEl('p',{text:writerUi('Remover somente o atalho para ','Remove only the shortcut to ')+bookmark.title+'?'});
+   new Setting(modal.contentEl).addButton(b=>b.setButtonText(writerUi('Remover','Remove'))
+    .setWarning().onClick(async()=>{
+     const cfg=this.plugin.settings.v8Finish;
+     cfg.homeWebBookmarks=cfg.homeWebBookmarks.filter(x=>x.id!==bookmark.id);
+     await this.plugin.saveSettings();modal.close();this.render();
+    })).addButton(b=>b.setButtonText(writerUi('Cancelar','Cancel')).onClick(()=>modal.close()));
+  };
+  modal.open();
+ }
+ renderFiles(parent,kind,getFiles){
+  const recent=kind==='recent',box=this.card(parent,kind,recent?'Notas recentes':'Favoritos',recent?'Recent notes':'Favorites');
+  const files=recent?writerV8HomeTopFiles(this.plugin,12,getFiles):
+   this.plugin.settings.v8Finish.homeFavorites.map(path=>this.app.vault.getAbstractFileByPath(path)).filter(file=>file instanceof TFile);
+  this.renderNoteRows(box,files,kind);
+ }
+ renderToday(parent,markdownFiles=this.app.vault.getMarkdownFiles?.()||[]){
+  const box=this.card(parent,'today','Editadas hoje','Edited today'),midnight=new Date();
+  midnight.setHours(0,0,0,0);
+  const files=markdownFiles
+   .filter(file=>(file.stat?.mtime||0)>=midnight.getTime())
+   .sort((a,b)=>(b.stat?.mtime||0)-(a.stat?.mtime||0)).slice(0,24);
+  this.renderNoteRows(box,files,'today');
+ }
+ renderNoteRows(box,files,kind){
+  const wrap=box.createDiv({cls:'writer-v905-note-widget'});
+  const search=wrap.createEl('input',{cls:'writer-v905-note-filter',attr:{
+   type:'search',autocomplete:'off',placeholder:writerUi('Filtrar notas deste painel…','Filter notes in this widget…'),
+   'aria-label':writerUi('Filtrar notas','Filter notes')}});
+  if(files.length<5)search.hidden=true;
+  const list=wrap.createDiv({cls:'writer-v8-home-file-list writer-v905-note-list',
+   attr:{role:'list','aria-label':writerUi('Notas para abrir','Notes to open')}});
+  const status=wrap.createDiv({cls:'writer-v905-note-status',
+   attr:{role:'status','aria-live':'polite','aria-atomic':'true'}});
+  let visible=[],selected=0;
+  const select=(index,moveFocus=false)=>{
+   if(!visible.length)return;
+   selected=(index+visible.length)%visible.length;
+   const rows=[...list.children];
+   rows.forEach((row,i)=>{row.classList.toggle('is-selected',i===selected);row.setAttribute('aria-current',String(i===selected));});
+   status.setText(writerUi('Selecionada: ','Selected: ')+visible[selected].path+' · '+writerUi('Enter para abrir','Enter to open'));
+   if(moveFocus){rows[selected]?.querySelector?.('.writer-v905-note-open')?.focus?.();
+    rows[selected]?.scrollIntoView?.({block:'nearest'});}
+  };
+  const draw=()=>{
+   const previous=visible[selected]?.path,query=search.value.trim().toLocaleLowerCase();
+   visible=files.filter(file=>!query||(file.basename||'').toLocaleLowerCase().includes(query)||
+    file.path.toLocaleLowerCase().includes(query));
+   selected=Math.max(0,visible.findIndex(f=>f.path===previous));
+   list.empty();status.empty();
+   if(!visible.length){
+    list.createEl('p',{cls:'writer-v8-home-muted',text:files.length?
+     writerUi('Nenhuma nota corresponde ao filtro.','No notes match your filter.'):
+     kind==='today'?writerUi('Nenhuma nota editada hoje.','No notes edited today.'):
+     writerUi('Nenhuma nota para mostrar.','No notes to show.')});
+    return;
+   }
+   for(const [index,file] of visible.entries()){
+    const row=list.createDiv({cls:'writer-v8-home-file-row writer-v905-note-row',attr:{role:'listitem',title:file.path}});
+    const open=row.createEl('button',{cls:'writer-v8-home-file-link writer-v905-note-open',
+     attr:{type:'button','aria-label':writerUi('Abrir nota: ','Open note: ')+file.path,title:file.path}});
+    const icon=open.createSpan({cls:'writer-v905-note-icon',attr:{'aria-hidden':'true'}});
+    require('obsidian').setIcon?.(icon,'file-text');
+    const labels=open.createSpan({cls:'writer-v905-note-labels'});
+    labels.createSpan({cls:'writer-v905-note-title',text:file.basename||file.name||writerUi('Sem título','Untitled')});
+    const sub=labels.createSpan({cls:'writer-v905-note-path',text:file.path});
+    if(file.stat?.mtime){
+     const date=new Date(file.stat.mtime);
+     if(Number.isFinite(date.getTime()))sub.setAttribute('title',writerUi('Editada: ','Edited: ')+date.toLocaleString(writerUi('pt-BR','en-US')));
+    }
+    const arrow=open.createSpan({cls:'writer-v905-note-arrow',attr:{'aria-hidden':'true'}});
+    require('obsidian').setIcon?.(arrow,'arrow-up-right');
+    open.addEventListener('pointerenter',()=>select(index));
+    open.addEventListener('focus',()=>select(index));
+    open.addEventListener('click',()=>this.openFile(file));
+    open.addEventListener('keydown',event=>{
+     if(event.key==='ArrowDown'||event.key==='ArrowUp'){
+      event.preventDefault();select(selected+(event.key==='ArrowDown'?1:-1),true);
+     }
+    });
+    if(kind==='favorites'){
+     const remove=row.createEl('button',{cls:'writer-v905-note-favorite',
+      attr:{type:'button','aria-label':writerUi('Remover favorito: ','Remove favorite: ')+file.path}});
+     require('obsidian').setIcon?.(remove,'star-off');
+     remove.addEventListener('click',()=>{writerV8HomeToggleFavorite(this.plugin,file.path);this.saveSoon();this.render();});
+    }
+   }
+   select(selected);
+  };
+  search.addEventListener('input',draw);
+  search.addEventListener('keydown',event=>{
+   if((event.key==='ArrowDown'||event.key==='ArrowUp')&&visible.length){
+    event.preventDefault();select(selected+(event.key==='ArrowDown'?1:-1),true);
+   }else if(event.key==='Enter'&&visible.length){
+    event.preventDefault();this.openFile(visible[selected]);
+   }else if(event.key==='Escape'&&search.value){search.value='';draw();}
+  });
+  draw();
+ }
+ renderQuick(parent){
+  const box=this.card(parent,'quick','Rascunhos rápidos','Quick drafts');
+  const tabs=box.createDiv({cls:'writer-v8-home-draft-tabs'});
+  const editor=box.createEl('textarea',{cls:'writer-v8-home-draft',attr:{'aria-label':writerUi('Rascunho temporário','Quick draft'),placeholder:writerUi('Anote uma ideia, uma frase ou uma cena…','Jot down an idea, a line or a scene…')}});
+  const statuses=box.createDiv({cls:'writer-v8-home-draft-actions'});
+  const save=statuses.createEl('button',{text:writerUi('Exportar para nota Markdown','Export to Markdown note')});
+  const message=statuses.createSpan({cls:'writer-v8-home-muted'});
+  let index=-1;
+  const pick=next=>{
+   if(index>=0)this.plugin.settings.v8Finish.homeQuick[index]=editor.value.slice(0,12000);
+   index=next;editor.value=this.plugin.settings.v8Finish.homeQuick[index]||'';
+   [...tabs.children].forEach((node,i)=>node.classList.toggle('is-active',i===index));
+  };
+  for(let i=0;i<3;i++){
+   const button=tabs.createEl('button',{text:String(i+1),attr:{type:'button','aria-label':writerUi('Rascunho ','Draft ')+(i+1)}});
+   button.addEventListener('click',()=>pick(i));
+  }
+  pick(0);
+  editor.addEventListener('input',()=>{this.plugin.settings.v8Finish.homeQuick[index]=editor.value.slice(0,12000);this.saveSoon();});
+  const generation=this.homeRenderGeneration,session=this.homeSession;
+  const current=()=>!this.disposed&&this.homeSession===session&&this.homeRenderGeneration===generation&&box.isConnected;
+  let exporting=false;
+  save.addEventListener('click',async()=>{
+   if(!current()||exporting)return;
+   const slot=index,raw=editor.value;
+   if(!raw.trim()){message.setText(writerUi('Escreva algo antes de exportar.','Write something before exporting.'));return;}
+   exporting=true;save.disabled=true;message.setText('');
+   try{
+    const result=await writerV16HomeExportDraft(this,slot,raw,current,()=>index,editor);
+    if(!current())return;
+    message.setText(writerUi('Nota criada.','Note created.'));
+    if(result.cleared&&index===slot&&editor.value==='')this.openFile(result.file);
+   }catch(error){
+    if(current())message.setText(writerUi('Erro ao exportar rascunho: ','Unable to export draft: ')+String(error.message||error));
+   }finally{exporting=false;if(current())save.disabled=false;}
+  });
+ }
+ renderStats(parent,files){
+  const box=this.card(parent,'stats','Resumo do cofre','Vault summary'),stats=writerV8HomeStats(this.plugin,files);
+  const items=box.createDiv({cls:'writer-v8-home-stats'});
+  for(const [value,pt,en] of [[stats.notes,'Notas Markdown','Markdown notes'],[stats.recent,'Editadas em 7 dias','Edited in 7 days']]){
+   const item=items.createDiv({cls:'writer-v8-home-stat'});
+   item.createEl('strong',{text:String(value)});
+   item.createEl('span',{text:writerUi(pt,en)});
+  }
+ }
+
+ renderGallery(parent){
+  const box=this.card(parent,'gallery','Galeria do cofre','Vault gallery');
+  const images=(this.app.vault.getFiles?.()||[])
+   .filter(file=>/^(png|jpe?g|webp|gif|avif)$/i.test(file.extension||'')).slice(0,5000);
+  if(!images.length){
+   box.createEl('p',{cls:'writer-v8-home-muted',text:writerUi('Adicione imagens ao cofre para usar a galeria.','Add images to your vault to populate the gallery.')});
+   return;
+  }
+  const previous=this.homeGalleryImage?.path;
+  let file=images.find(item=>item.path===previous)||writerV8HomePick(images);
+  this.homeGalleryImage=file;
+  const picture=box.createDiv({cls:'writer-v905-gallery-frame'});
+  const img=picture.createEl('img',{attr:{src:this.app.vault.getResourcePath(file),
+   alt:file.basename||file.name||writerUi('Imagem do cofre','Vault image'),loading:'lazy',decoding:'async'}});
+  const name=box.createDiv({cls:'writer-v905-gallery-name',text:file.basename||file.name});
+  const path=box.createDiv({cls:'writer-v905-gallery-path',text:file.path});
+  const actions=box.createDiv({cls:'writer-v903-widget-actions'});
+  const open=actions.createEl('button',{text:writerUi('Abrir imagem','Open image')});
+  open.addEventListener('click',()=>this.openFile(file));
+  const shuffle=actions.createEl('button',{text:writerUi('Outra imagem','Shuffle image')});
+  shuffle.addEventListener('click',()=>{
+   const picked=writerV8HomePick(images,file.path);
+   if(!picked)return;
+   file=picked;this.homeGalleryImage=file;
+   img.src=this.app.vault.getResourcePath(file);
+   img.alt=file.basename||file.name||'';
+   name.setText(file.basename||file.name);path.setText(file.path);
+  });
+ }
+ renderQuotes(parent){
+  const box=this.card(parent,'quotes','Citação aleatória','Random quote');
+  const manual=writerV8HomeQuoteChoices(this.plugin.settings.v8Finish.homeQuotes).map(([text,by])=>[text,by,null,null]);
+  const mode=writerV92ZoteroQuoteMode(this.plugin),read=this.plugin.writerV92Research?.quotes;
+  let loading=mode!=='manual'&&Boolean(read),list=mode==='only'?[]:manual;
+  const previous=this.homeQuote,generation=this.homeRenderGeneration;
+  const pick=(prior)=>list.find(quote=>quote[0]===prior?.[0]&&quote[2]===prior?.[2])||writerV8HomePick(list,this.homeQuotePrevious);
+  let current=pick(previous);
+  const initial=current;
+  const body=box.createEl('blockquote',{cls:'writer-v905-quote-text'});
+  const quote=body.createEl('p'),author=box.createDiv({cls:'writer-v905-quote-author'});
+  const actions=box.createDiv({cls:'writer-v903-widget-actions'});
+  const source=actions.createEl('button',{text:writerUi('Abrir fonte Zotero','Open Zotero source')});
+  const next=actions.createEl('button',{text:writerUi('Outra citação','Another quote')});
+  const draw=()=>{
+   this.homeQuote=current;
+   quote.setText(current?.[0]||(loading?writerUi('Carregando destaques do Zotero…','Loading Zotero highlights…'):
+    writerUi('Nenhum destaque Zotero encontrado.','No Zotero highlights found.')));
+   author.setText(current?(current[1]?'— '+current[1]:writerUi('Inspiração para escrever','Writing inspiration')):'');
+   source.hidden=!current?.[2];next.disabled=list.length<2;
+  };
+  source.addEventListener('click',()=>{
+   const file=current?.[2]?this.app.vault.getAbstractFileByPath(current[2]):null;
+   if(file instanceof TFile)this.openFile(file);
+  });
+  next.addEventListener('click',()=>{
+   if(!current)return;
+   this.homeQuotePrevious=current[0];
+   current=writerV8HomePick(list,current[0])||current;draw();
+  });
+  draw();
+  const load=entries=>{
+   if(this.disposed||this.homeRenderGeneration!==generation||!box.isConnected)return;
+   loading=false;
+   list=mode==='both'?[...manual,...entries]:entries.length||mode==='only'?entries:manual;
+   current=pick(current===initial?previous||current:current);
+   draw();
+  };
+  if(loading)void read().then(load,error=>{console.warn('[Basic AI] Zotero quote widget:',error);load([]);});
+ }
+ renderActivity(parent,files=this.app.vault.getMarkdownFiles?.()||[]){
+  const box=this.card(parent,'activity','Atividade da semana','Weekly activity');
+  const {days,counts}=writerV16HomeActivityCounts(files,new Date());
+  const formatter=new Intl.DateTimeFormat(writerUi('pt-BR','en-US'),{weekday:'short'});
+  const labels=days.map(day=>formatter.format(day));
+  const high=Math.max(1,...counts),chart=box.createDiv({cls:'writer-v903-activity'});
+  for(let i=0;i<7;i++){
+   const column=chart.createDiv({cls:'writer-v903-activity-day',attr:{title:labels[i]+': '+counts[i]}});
+   const bar=column.createDiv({cls:'writer-v903-activity-track'});
+   bar.createDiv({cls:'writer-v903-activity-fill'}).style.height=(counts[i]/high*100)+'%';
+   column.createEl('strong',{text:String(counts[i])});
+   column.createSpan({text:labels[i]});
+  }
+  box.createEl('p',{cls:'writer-v8-home-muted',text:writerUi('Notas modificadas a cada dia.','Notes modified each day.')});
+ }
+ renderRandom(parent,files=this.app.vault.getMarkdownFiles?.()||[]){
+  const box=this.card(parent,'random','Nota surpresa','Surprise note');
+  if(!files.length){box.createEl('p',{cls:'writer-v8-home-muted',text:writerUi('Nenhuma nota encontrada.','No notes found.')});return;}
+  let file=files[Math.floor(Math.random()*files.length)];
+  const label=box.createDiv({cls:'writer-v903-random-note'});
+  const name=label.createEl('strong',{text:file.basename});
+  const path=label.createSpan({cls:'writer-v8-home-muted',text:file.path});
+  const actions=box.createDiv({cls:'writer-v903-widget-actions'});
+  const open=actions.createEl('button',{text:writerUi('Abrir nota','Open note')});
+  open.addEventListener('click',()=>this.openFile(file));
+  const next=actions.createEl('button',{text:writerUi('Outra nota','Another note')});
+  next.addEventListener('click',()=>{
+   if(files.length>1){
+    let chosen=file;for(let attempt=0;attempt<5&&chosen.path===file.path;attempt++)chosen=files[Math.floor(Math.random()*files.length)];
+    if(chosen.path===file.path)chosen=files[(files.indexOf(file)+1)%files.length];
+    file=chosen;
+   }
+   name.setText(file.basename);path.setText(file.path);
+  });
+ }
+ renderTags(parent,files=this.app.vault.getMarkdownFiles?.()||[]){
+  const box=this.card(parent,'tags','Tags frequentes','Popular tags');
+  const cache=this.app.metadataCache,counts=new Map();
+  const obsidian=require('obsidian');
+  for(const file of files.slice(0,3000)){
+   const meta=cache?.getFileCache?.(file);
+   const tags=meta&&typeof obsidian.getAllTags==='function'?obsidian.getAllTags(meta)||[]:
+    (meta?.tags||[]).map(item=>item.tag).concat(meta?.frontmatter?.tags||[]);
+   for(const item of new Set(tags.map(tag=>String(tag||'').trim().replace(/^#/,'').toLowerCase()).filter(Boolean))){
+    counts.set(item,(counts.get(item)||0)+1);
+   }
+  }
+  const list=[...counts].sort((a,b)=>b[1]-a[1]).slice(0,10);
+  if(!list.length){box.createEl('p',{cls:'writer-v8-home-muted',text:writerUi('Adicione tags às notas para ver as mais usadas.','Add tags to notes to see your top topics.')});return;}
+  const chips=box.createDiv({cls:'writer-v903-tags'});
+  for(const [tag,count] of list){
+   const item=chips.createDiv({cls:'writer-v903-tag'});
+   item.createSpan({text:'#'+tag});item.createEl('small',{text:String(count)});
+  }
+ }
+ renderGoal(parent){
+  const box=this.card(parent,'goal','Meta de palavras','Word target');
+  const cfg=this.plugin.settings.v8Finish;
+  const path=cfg.homeRecent?.[0];
+  const file=path?this.app.vault.getAbstractFileByPath(path):null;
+  const summary=box.createDiv({cls:'writer-v903-goal-summary'});
+  const count=summary.createEl('strong',{text:'—'});
+  const target=summary.createSpan({text:'/ '+cfg.homeWordGoal+' '+writerUi('palavras','words')});
+  const track=box.createDiv({cls:'writer-v903-goal-track',attr:{role:'progressbar','aria-label':writerUi('Progresso da meta','Target progress'),'aria-valuemin':'0','aria-valuemax':String(cfg.homeWordGoal),'aria-valuenow':'0'}});
+  const fill=track.createDiv({cls:'writer-v903-goal-fill'});
+  const foot=box.createEl('p',{cls:'writer-v8-home-muted',text:file?.path||writerUi('Abra uma nota Markdown para acompanhar.','Open a Markdown note to begin tracking.')});
+  if(!(file instanceof TFile)||file.extension!=='md')return;
+  const generation=this.homeRenderGeneration;
+  const current=()=>!this.disposed&&this.homeRenderGeneration===generation&&box.isConnected;
+  Promise.resolve(this.app.vault.cachedRead(file)).then(content=>{
+   if(!current())return;
+   const words=(String(content||'').match(/[^\s]+/g)||[]).length;
+   count.setText(String(words));target.setText('/ '+cfg.homeWordGoal+' '+writerUi('palavras','words'));
+   fill.style.width=Math.min(100,words/cfg.homeWordGoal*100)+'%';
+   track.setAttribute('aria-valuenow',String(Math.min(words,cfg.homeWordGoal)));
+   foot.setText(file.path);
+  }).catch(()=>{if(current())foot.setText(writerUi('Não foi possível ler a nota.','Could not read note.'));});
+ }
+
+}
+function cfgStar(list,path){return list.includes(path);}
+function writerV8HomeToggleFavorite(plugin,path){
+ const list=plugin.settings.v8Finish.homeFavorites;
+ const i=list.indexOf(path);
+ if(i>=0)list.splice(i,1);
+ else list.unshift(path);
+ plugin.settings.v8Finish.homeFavorites=list.slice(0,30);
+ plugin.writerV92Explorer?.schedule?.();
+}
+function writerV8RegisterHome(plugin){
+ if(plugin._writerV16HomeRegistration)return;
+ const session={active:true};plugin._writerV16HomeRegistration=session;
+ const active=()=>session.active&&plugin._writerV16HomeRegistration===session;
+ plugin.registerView?.(WRITER_V8_HOME_VIEW,leaf=>new WriterV8HomeView(leaf,plugin));
+ const open=async()=>{
+  if(!active())return;
+  const workspace=plugin.app.workspace,existing=workspace.getLeavesOfType?.(WRITER_V8_HOME_VIEW)?.[0];
+  if(existing){
+   // Opening an already present Home tab is a new visit, not an incidental rerender.
+   if(existing.view){existing.view.homeQuote=null;existing.view.homeGalleryImage=null;existing.view.render?.();}
+   workspace.setActiveLeaf?.(existing,{focus:true});return;
+  }
+  const leaf=workspace.getLeaf?.('tab')||workspace.getLeaf?.(true);
+  if(leaf)await leaf.setViewState({type:WRITER_V8_HOME_VIEW,active:true});
+ };
+ plugin.writerV8HomeOpen=open;
+ plugin.addCommand({id:'v8-open-writing-home',name:writerUi('Início: abrir painel de escrita','Home: open writing dashboard'),callback:()=>void open()});
+ plugin.addCommand({id:'v1203-bookmark-current-webpage',
+  name:writerUi('Web: favoritar página aberta no Surfing','Web: bookmark current Surfing page'),
+  callback:async()=>{
+   if(!active())return;
+   const view=plugin.app.workspace.activeLeaf?.view;
+   const type=view?.getViewType?.();
+   if(type!=='surfing-view'&&type!=='webviewer'){
+    new Notice(writerUi('Abra uma página do Surfing ou Web Viewer primeiro.','Open a Surfing or Web Viewer page first.'));return;
+   }
+   const url=writerV8HomeValidURL(view.getState?.()?.url||'');
+   if(!url){new Notice(writerUi('Essa página não possui um endereço web válido.','This page has no valid web address.'));return;}
+   const bookmark={url,title:String(view.getCurrentTitle?.()||view.getDisplayText?.()||new URL(url).hostname).slice(0,70)};
+   await open();
+   if(!active())return;
+   const home=plugin.app.workspace.getLeavesOfType?.(WRITER_V8_HOME_VIEW)?.[0]?.view;
+   home?.editWebBookmark?.(bookmark);
+  }});
+ plugin.addCommand({id:'v1203-web-search',name:writerUi('Web: pesquisar na homepage','Web: search from home'),
+  callback:async()=>{
+   if(!active())return;
+   await open();
+   if(!active())return;
+   const view=plugin.app.workspace.getLeavesOfType?.(WRITER_V8_HOME_VIEW)?.[0]?.view;
+   view?.homeSearchWebMode?.();
+  }});
+ plugin.addCommand({id:'v8-toggle-current-favorite',name:writerUi('Início: favoritar nota atual','Home: toggle current note favorite'),callback:()=>{
+  if(!active())return;
+  const file=plugin.app.workspace.getActiveFile?.();
+  if(!(file instanceof TFile))return new Notice(writerUi('Abra uma nota primeiro.','Open a note first.'));
+  writerV8HomeToggleFavorite(plugin,file.path);
+  void plugin.saveSettings();
+  for(const leaf of plugin.app.workspace.getLeavesOfType?.(WRITER_V8_HOME_VIEW)||[])leaf.view?.render?.();
+ }});
+ let timer=null;
+ plugin.registerEvent(plugin.app.workspace.on('file-open',file=>{
+  if(!active()||!(file instanceof TFile)||file.extension!=='md')return;
+  const recents=plugin.settings?.v8Finish?.homeRecent;
+  if(!recents)return;
+  plugin.settings.v8Finish.homeRecent=[file.path,...recents.filter(p=>p!==file.path)].slice(0,16);
+  clearTimeout(timer);
+  const ticket=setTimeout(()=>{if(!active()||timer!==ticket)return;timer=null;void plugin.saveSettings().catch(console.warn);},1400);timer=ticket;
+ }));
+ plugin.registerEvent(plugin.app.vault.on('rename',(file,old)=>{
+  if(!active())return;
+  const cfg=plugin.settings.v8Finish;
+  if(!(file instanceof TFile))return;
+  cfg.homeFavorites=cfg.homeFavorites.map(p=>p===old?file.path:p);
+  cfg.homeRecent=cfg.homeRecent.map(p=>p===old?file.path:p);
+ }));
+ plugin.register?.(()=>{
+  session.active=false;clearTimeout(timer);timer=null;
+  if(plugin._writerV16HomeRegistration===session){
+   delete plugin._writerV16HomeRegistration;
+   if(plugin.writerV8HomeOpen===open)delete plugin.writerV8HomeOpen;
+  }
+ });
+ // Reconcile only ATTACHED, empty root tabs; never touch existing notes,
+ // settings, sidebars, restored sessions or the native Web Viewer.
+ let tabTimer=null,tabBusy=false;
+ const populateEmptyTabs=()=>{
+  if(!active()||tabBusy||!plugin._writerV106HomeStarted||plugin._writerV106HomeStarting||!plugin.settings?.v8Finish?.homeOnNewTab||!writerModuleOn(plugin,'writingHome'))return;
+  tabBusy=true;
+  try{
+   for(const leaf of writerV8HomeAttachedEmpty(plugin.app.workspace)){
+    // Convert exactly one empty leaf, and never open another new tab here.
+    if(leaf.__writerV8HomeConverting)continue;
+    leaf.__writerV8HomeConverting=true;
+    Promise.resolve(leaf.setViewState({type:WRITER_V8_HOME_VIEW,active:false}))
+     .catch(error=>console.warn('[Basic AI] New-tab homepage:',error))
+     .finally(()=>{leaf.__writerV8HomeConverting=false;});
+   }
+  }finally{tabBusy=false;}
+ };
+ const schedule=()=>{
+  if(!active()||!plugin._writerV106HomeStarted||plugin._writerV106HomeStarting||!plugin.settings?.v8Finish?.homeOnNewTab)return;
+  clearTimeout(tabTimer);
+  const ticket=setTimeout(()=>{if(!active()||tabTimer!==ticket)return;tabTimer=null;populateEmptyTabs();},85);tabTimer=ticket;
+ };
+ if(typeof plugin.app.workspace.on==='function'){
+  plugin.registerEvent(plugin.app.workspace.on('layout-change',schedule));
+  plugin.registerEvent(plugin.app.workspace.on('active-leaf-change',leaf=>{
+   if(active()&&writerV8HomeIsRootEmpty(leaf))schedule();
+  }));
+ }
+ plugin.register?.(()=>{clearTimeout(tabTimer);tabTimer=null;});
+ if(typeof writerV106HomeRegisterStartup==='function')writerV106HomeRegisterStartup(plugin,open);
+ if(typeof plugin.app.workspace.onLayoutReady==='function')
+  plugin.app.workspace.onLayoutReady(()=>{if(active()&&plugin.settings.v8Finish.homeOnNewTab)schedule();});
+}
+function writerV8FinishSettings(plugin,panel){
+ const cfg=plugin.settings.v8Finish;
+ panel.createEl('h3',{text:writerUi('Legendas, conversas e página inicial','Image captions, fictional chats and writing homepage')});
+ panel.createEl('p',{text:writerUi('Recursos locais para notas do seu cofre. A página inicial não substitui a aba padrão sem autorização.','Local features for your vault. The homepage does not replace the default tab without permission.'),cls:'dictionary-muted'});
+ new Setting(panel).setName(writerUi('Legendas automáticas em imagens Markdown','Show captions from Markdown image alt text'))
+  .setDesc(writerUi('Ex.: ![[foto.jpg|Legenda curta]]. Se Image Captions estiver ativo, este módulo deixa a renderização com ele.','Example: ![[photo.jpg|Short caption]]. When Image Captions is enabled, that plugin handles captions.'))
+  .addToggle(x=>x.setValue(cfg.captions).onChange(async value=>{cfg.captions=value;await plugin.saveSettings();}));
+ new Setting(panel).setName(writerUi('Tamanho máximo da legenda','Maximum caption characters'))
+  .addText(x=>x.setValue(String(cfg.captionMax)).onChange(async value=>{cfg.captionMax=Math.max(32,Math.min(240,Number(value)||180));await plugin.saveSettings();}));
+ new Setting(panel).setName(writerUi('Abrir a homepage de escrita ao iniciar','Open writing homepage on startup'))
+  .setDesc(writerUi('Abre a homepage no próximo início do Obsidian. A limpeza de abas é configurada separadamente.','Opens Home at the next Obsidian startup. Tab cleanup is configured separately.'))
+  .addToggle(x=>x.setValue(cfg.homeAtStartup).onChange(async value=>{cfg.homeAtStartup=value;await plugin.saveSettings();}));
+ new Setting(panel).setName(writerUi('Começar cada sessão com a homepage limpa','Start each session with a clean homepage'))
+  .setDesc(writerUi('Ativado por padrão. No próximo início real do Obsidian, fecha apenas abas principais restauradas, mantém painéis laterais e abre uma homepage. Não roda ao atualizar ou recarregar o plugin.','Enabled by default. On a fresh Obsidian startup, closes restored main tabs, keeps sidebars and opens one Home tab. Never runs on plugin updates/reloads.'))
+  .addToggle(x=>x.setValue(cfg.homeCleanStart!==false).onChange(async value=>{cfg.homeCleanStart=value;await plugin.saveSettings();}));
+ const refreshHome=()=>{
+  for(const leaf of plugin.app.workspace.getLeavesOfType?.(WRITER_V8_HOME_VIEW)||[]){
+   leaf.view?.render?.();
+   leaf.updateHeader?.();
+  }
+ };
+ new Setting(panel).setName(writerUi('Título da homepage','Homepage title'))
+  .setDesc(writerUi('Em branco para usar o título padrão.','Leave blank to use the default title.'))
+  .addText(input=>input.setPlaceholder(writerUi('Meu espaço de escrita','My writing space'))
+   .setValue(cfg.homeTitle||'').onChange(async value=>{
+    cfg.homeTitle=writerV8HomeTitleClean(value);
+    await plugin.saveSettings();refreshHome();
+   }));
+ writerV922IconSetting(plugin,panel,{
+  pt:'Ícone da homepage',en:'Homepage icon',
+  value:writerV8HomeIconName(cfg.homeIcon),color:cfg.homeIconColor,defaultIcon:'book-open',
+  description:writerUi('Pesquise todos os ícones Lucide, favorite opções e personalize a cor.',
+   'Search all Lucide icons, pin favorite choices and customize the color.'),
+  onApply:async(icon,color)=>{
+   cfg.homeIcon=writerV8HomeIconName(icon);
+   cfg.homeIconColor=color;
+   await plugin.saveSettings();refreshHome();
+  }
+ });
+ writerV9ColorSetting(panel,'Cor do título da homepage','Homepage title color',cfg.homeTitleColor,value=>{
+  cfg.homeTitleColor=value;void plugin.saveSettings().then(refreshHome);
+ });
+ new Setting(panel).setName(writerUi('Imagem do ícone (cofre ou HTTPS)','Icon image (vault or HTTPS)'))
+  .setDesc(writerUi('Caminho de uma imagem no cofre ou URL HTTPS. Deixe em branco para usar o ícone Lucide escolhido. Links remotos fazem uma requisição ao site da imagem.','Vault image path or HTTPS URL. Leave empty to use the selected Lucide icon. Remote images contact the image host.'))
+  .addText(input=>input.setPlaceholder(writerUi('Imagens/ícone.png ou https://…','Assets/icon.png or https://…')).setValue(cfg.homeIconImage||'')
+   .onChange(async value=>{cfg.homeIconImage=String(value||'').trim().slice(0,600);await plugin.saveSettings();refreshHome();}));
+ new Setting(panel).setName(writerUi('Abrir homepage em toda nova aba vazia','Open homepage in every new empty tab'))
+  .setDesc(writerUi('Ativado por padrão. Apenas abas vazias: nunca substitui arquivos ou outras visualizações.','Enabled by default. Empty tabs only: never replaces notes or other views.'))
+  .addToggle(toggle=>toggle.setValue(cfg.homeOnNewTab).onChange(async value=>{
+   cfg.homeOnNewTab=value;await plugin.saveSettings();
+  }));
+ if(writerV8HomeSurfing(plugin)&&!writerV8HomeIsMobile(plugin)){
+ panel.createEl('h3',{text:writerUi('Pesquisa web e Surfing','Web search and Surfing')});
+ panel.createEl('p',{cls:'setting-item-description',text:writerUi(
+  'A barra de endereços é exibida automaticamente no topo da homepage somente enquanto o Surfing estiver ativo no computador.',
+  'The address bar appears automatically at the top of Home only while Surfing is active on desktop.')});
+ new Setting(panel).setName(writerUi('Mecanismo de busca','Search engine'))
+  .setDesc(writerUi('O padrão do Surfing acompanha o buscador escolhido nele, quando instalado.',
+   'Surfing default follows the search engine selected in Surfing, when installed.'))
+  .addDropdown(d=>{
+   for(const [id,name] of WRITER_V8_WEB_ENGINES)
+    d.addOption(id,id==='surfing'?writerUi('Padrão do Surfing (ou Google)','Surfing default (or Google)'):name);
+   d.setValue(WRITER_V8_WEB_ENGINES.some(row=>row[0]===cfg.homeWebSearchEngine)?cfg.homeWebSearchEngine:'surfing')
+    .onChange(async value=>{cfg.homeWebSearchEngine=value;await plugin.saveSettings();});
+  });
+ new Setting(panel).setName(writerUi('Abrir resultados web em','Open web results in'))
+  .setDesc(writerUi('No PC, Surfing usa o plugin instalado. Se não estiver disponível, recorre ao Web Viewer ou navegador externo. No celular usa navegador externo.',
+   'On desktop, Surfing uses the installed plugin; otherwise native Web Viewer or external browser. Mobile always uses the external browser.'))
+  .addDropdown(d=>d
+   .addOption('auto',writerUi('Automático (Surfing → Web Viewer → navegador)','Automatic (Surfing → Web Viewer → browser)'))
+   .addOption('surfing','Surfing')
+   .addOption('webviewer','Web Viewer')
+   .addOption('external',writerUi('Navegador externo','External browser'))
+   .setValue(cfg.homeWebSearchTarget||'auto')
+   .onChange(async value=>{cfg.homeWebSearchTarget=value;await plugin.saveSettings();}));
+ }
+ new Setting(panel).setName(writerUi('Favoritos da web','Web bookmarks'))
+  .setDesc(writerUi('Adicione sites ao widget de favoritos, sem misturar com as notas favoritas.',
+   'Add sites to the web bookmarks widget, separate from favorite notes.'))
+  .addButton(b=>b.setButtonText(writerUi('Adicionar site','Add website')).onClick(async()=>{
+   await plugin.writerV8HomeOpen?.();
+   const home=plugin.app.workspace.getLeavesOfType?.(WRITER_V8_HOME_VIEW)?.[0]?.view;
+   home?.editWebBookmark?.();
+  }));
+ writerV83StudySettings(plugin,panel);
+ new Setting(panel).setName(writerUi('Personalizar widgets da homepage','Customize homepage widgets'))
+  .setDesc(writerUi('Adicione, remova e reorganize cartões sem apagar suas notas.','Add, remove and reorder cards without deleting notes.'))
+  .addButton(button=>button.setButtonText(writerUi('Gerenciar widgets','Manage widgets')).onClick(async()=>{
+   await plugin.writerV8HomeOpen?.();
+   plugin.app.workspace.getLeavesOfType?.(WRITER_V8_HOME_VIEW)?.[0]?.view?.manageWidgets?.();
+  }));
+ new Setting(panel).setName(writerUi('Citações da homepage','Homepage quotes'))
+  .setDesc(writerUi('Uma citação por linha. Opcional: frase | autor. Em branco usa frases originais do Basic. O sorteio muda ao abrir a homepage.','One quote per line. Optional: quote | author. Empty uses original Basic quotes. A new quote is chosen when opening the homepage.'))
+  .addTextArea(input=>input.setValue(cfg.homeQuotes||'').onChange(async value=>{
+   cfg.homeQuotes=String(value||'').slice(0,12000);
+   await plugin.saveSettings();
+   for(const leaf of plugin.app.workspace.getLeavesOfType?.(WRITER_V8_HOME_VIEW)||[]){
+    if(leaf.view){leaf.view.homeQuote=null;leaf.view.render?.();}
+   }
+  }));
+ new Setting(panel).setName(writerUi('Meta de palavras do widget','Widget word target'))
+  .setDesc(writerUi('Progresso calculado sobre a última nota Markdown aberta.','Progress measured against the latest opened Markdown note.'))
+  .addText(input=>input.setValue(String(cfg.homeWordGoal)).onChange(async value=>{
+   const number=Math.round(Number(value));
+   if(!Number.isFinite(number)||number<50)return;
+   cfg.homeWordGoal=Math.min(20000,number);await plugin.saveSettings();refreshHome();
+  }));
+ new Setting(panel).setName(writerUi('Abrir calendário completo','Open full calendar'))
+  .addButton(btn=>btn.setButtonText(writerUi('Abrir','Open')).onClick(()=>void plugin.writerCalendarOpen?.()));
+ new Setting(panel).setName(writerUi('Abrir homepage agora','Open homepage now'))
+  .addButton(x=>x.setButtonText(writerUi('Abrir','Open')).onClick(()=>void plugin.writerV8HomeOpen?.()));
+}

@@ -2,8 +2,8 @@
 const {test}=require('node:test'),assert=require('node:assert/strict');
 const fs=require('node:fs'),vm=require('node:vm');
 const read=p=>fs.readFileSync(p,'utf8');
-const finish=read('src/v8/finish-blocks.js');
-const home=read('src/v8/writing-home.js');
+const finish=read('src/blocks/finish-blocks.js');
+const home=read('src/workspace/writing-home.js');
 const api=vm.runInNewContext(finish+'\n({merge:writerV8FinishMerge})',{
  writerV8HomeIconName:()=> 'book-open'
 });

@@ -17,7 +17,7 @@ class Element{
 const plain=value=>JSON.parse(JSON.stringify(value));
 const task=(extra={})=>({path:'Writing/Chapter.md',line:3,raw:'- [ ] Revise #book',done:false,title:'Revise',plainTitle:'Revise',tags:['book'],markers:{source:'manual'},...extra});
 function harness(language='en'){
- const source=fs.readFileSync('src/v13/companion-notes.js','utf8');
+ const source=fs.readFileSync('src/integrations/companion-notes.js','utf8');
  const api=vm.runInNewContext(source+'\n({WRITER_COMPANION_NOTES,writerCompanionNotesOpenSettings,writerCompanionSnailkitService,writerCompanionSnailkitTasks,writerCompanionSnailkitSetDone,writerCompanionSnailkitRegister})',{
   writerUi:(pt,en)=>language==='pt'?pt:en,
   writerModuleOn:(plugin,id)=>plugin.settings.visibleModules[id]!==false,

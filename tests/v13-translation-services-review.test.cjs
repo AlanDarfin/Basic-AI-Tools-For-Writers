@@ -3,7 +3,7 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
-const code=['src/v4/editor.js','src/v13/core-workflows.js','src/v13/translation-services.js'].map(name=>fs.readFileSync(name,'utf8')).join('\n');
+const code=['src/editor/editor.js','src/writing/core-workflows.js','src/integrations/translation-services.js'].map(name=>fs.readFileSync(name,'utf8')).join('\n');
 const plain=value=>JSON.parse(JSON.stringify(value));
 const cfg=id=>({translationProvider:id,translationKeys:{[id]:'example-private-key'},translationEndpoint:'https://translate.example',sourceLanguage:'en',targetLanguage:'pt'});
 function result(id,values){

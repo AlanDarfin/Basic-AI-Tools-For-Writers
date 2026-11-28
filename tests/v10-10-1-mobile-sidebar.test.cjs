@@ -35,7 +35,7 @@ function html(){
  doc.createElement=node;doc.body=node('body');
  return {doc,node};
 }
-const source=fs.readFileSync('src/v10/sidebar-width-1010.js','utf8');
+const source=fs.readFileSync('src/workspace/sidebar-width-1010.js','utf8');
 function loadMobile(globals={}){
  const callbacks=[],logs=[],ctx={
   console:{warn:(...a)=>logs.push(['warn',...a]),error:(...a)=>logs.push(['error',...a])},
@@ -104,7 +104,7 @@ test('Mobile toolbar mounts INSIDE native selector, replaces only the old select
  assert.ok(!tabs.children.some(n=>n.classList.contains('writer-v1010-sidebar-toolbar')));
 });
 test('Mobile Spaces belongs to native tabs instead of Explorer scroll or rebuilt drawer inner',()=>{
- const source=fs.readFileSync('src/v9/spaces-dock.js','utf8');
+ const source=fs.readFileSync('src/workspace/spaces-dock.js','utf8');
  assert.match(source,/function writerV1014MobileSpacesAnchor\(plugin\)/);
  assert.match(source,/const mount=writerV1014MobileSpacesAnchor\(plugin\)/);
  assert.match(source,/writer-v1014-mobile-spaces-anchor/);
@@ -114,7 +114,7 @@ test('Mobile Spaces belongs to native tabs instead of Explorer scroll or rebuilt
  assert.match(source,/mobileObserver\.observe\(root,\{childList:true,subtree:true\}\)/);
  assert.match(source,/writerV9215SelectSpace\(plugin,id\)/);
  assert.doesNotMatch(source,/const mount=root\.querySelector\?\.\('\.workspace-drawer-inner'\)/);
- const css=fs.readFileSync('src/styles/v10-2-workflow.css','utf8');
+ const css=fs.readFileSync('src/styles/features/v10-2-workflow.css','utf8');
  assert.match(css,/\.writer-v1014-mobile-spaces-anchor/);
  assert.match(css,/inset:auto 8px calc\(100% \+ 3px\)/);
  assert.match(css,/\.writer-v1014-collapsible-spaces/);
@@ -126,7 +126,7 @@ test('More menu combines overflowing tabs and native actions, with Spaces access
  assert.match(source,/Gerenciar Spaces/);
  assert.match(source,/Cofre: /);
  assert.match(source,/writer-v1011-compact-footer/);
- const css=fs.readFileSync('src/styles/v10-2-workflow.css','utf8');
+ const css=fs.readFileSync('src/styles/features/v10-2-workflow.css','utf8');
  assert.match(css,/\.writer-v1011-native-tabs-hidden/);
  assert.match(css,/\.writer-v1011-integrated-spaces/);
  assert.match(css,/writer-v1011-managed-mobile\.writer-v1011-compact-footer/);
@@ -152,7 +152,7 @@ test('Native action menu retains Lucide icons and waits until parent menu closes
  assert.equal(api.writerV1012NativeActionIcon(noIcon,'Nova nota'),'file-plus');
  assert.equal(api.writerV1012NativeActionIcon(noIcon,'Nova pasta'),'folder-plus');
  assert.equal(api.writerV1012NativeActionIcon(noIcon,'Expandir tudo'),'chevrons-up-down');
- const css=fs.readFileSync('src/styles/v10-2-workflow.css','utf8');
+ const css=fs.readFileSync('src/styles/features/v10-2-workflow.css','utf8');
  assert.match(css,/Keep Obsidian's real action buttons laid out/);
  assert.match(css,/opacity:0;pointer-events:none/);
  assert.doesNotMatch(css,/writer-v1011-empty-native-header\{\s*display:none/);

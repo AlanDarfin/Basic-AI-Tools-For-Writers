@@ -1,6 +1,6 @@
 'use strict';
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
-const source=fs.readFileSync('src/v8/format-blocks.js','utf8')+'\n'+fs.readFileSync('src/v8/block-edit.js','utf8');
+const source=fs.readFileSync('src/blocks/format-blocks.js','utf8')+'\n'+fs.readFileSync('src/blocks/block-edit.js','utf8');
 class TFile{
  constructor(path){this.path=path;this.extension='md';this.stat={mtime:1,size:0};}
 }

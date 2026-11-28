@@ -7,24 +7,24 @@ function expose(path,names,extras={}){
   {console,Date,Map,Set,URL,Math,Number,String,Array,writerUi:(pt,en)=>en,...extras});
 }
 test('Spaces manager uses accessible actions, responsive cards and finite pagination',()=>{
- const s=read('src/v9/smart-spaces.js'),css=read('styles.css');
+ const s=read('src/workspace/smart-spaces.js'),css=read('styles.css');
  assert.match(s,/writer-v102-space-entry-info/);assert.match(s,/writer-v102-space-entry-arrow/);
  assert.match(s,/writer-v102-space-picker/);assert.match(s,/pageSize=space\.view==='table'\?30:24/);
  assert.match(s,/file\.parent\?\.path/);
  assert.match(css,/writer-v102-spaces-results\.is-cards/);
 });
 test('Pretty Properties migrates per-file hidden keys and custom icons without rewriting frontmatter',()=>{
- const cfg=expose('src/v9/pretty-properties.js',['writerV9215PrettyMerge','writerV9215PrettyKey']);
+ const cfg=expose('src/editor/pretty-properties.js',['writerV9215PrettyMerge','writerV9215PrettyKey']);
  const settings={v9215Pretty:{hidden:['status'],hiddenPerFile:{'Novel.md':['banner','NT']},
   propertyIcons:{status:'star','banner':'image'}}};
  const result=cfg.writerV9215PrettyMerge(settings);
  assert.deepEqual(Array.from(result.hiddenPerFile['Novel.md']),['banner','nt']);
  assert.equal(result.propertyIcons.status,'star');assert.equal(result.propertyActions,true);
- assert.match(read('src/v9/pretty-properties.js'),/writerV102PropertyMenu/);
- assert.match(read('src/v9/pretty-properties.js'),/onApply:async icon/);
+ assert.match(read('src/editor/pretty-properties.js'),/writerV102PropertyMenu/);
+ assert.match(read('src/editor/pretty-properties.js'),/onApply:async icon/);
 });
 test('Chat parses speaker bubble color independently of name color and transparent background',()=>{
- const api=expose('src/v8/finish-blocks.js',['writerV8ChatParse','writerV8ChatFakeAudio']);
+ const api=expose('src/blocks/finish-blocks.js',['writerV8ChatParse','writerV8ChatFakeAudio']);
  const chat=api.writerV8ChatParse('title: Test\nbackground: transparent\nbubble-color: blue\n[Maria=red]\n[Maria=bubble:green]\n\n< | Maria | [audio:0:05:teste teste] | 14:34');
  assert.equal(chat.options.background,'transparent');
  assert.equal(chat.options.bubbleColor,'blue');
@@ -36,7 +36,7 @@ test('Chat parses speaker bubble color independently of name color and transpare
  assert.match(css,/is-background-transparent/);
 });
 test('Preview supports banner and secure direct HTTPS links with privacy switch',()=>{
- const api=expose('src/v9/explorer-favorites-preview.js',['writerV102PreviewRemoteUrl','writerV92ExplorerMerge']);
+ const api=expose('src/workspace/explorer-favorites-preview.js',['writerV102PreviewRemoteUrl','writerV92ExplorerMerge']);
  assert.equal(api.writerV102PreviewRemoteUrl('www.example.com/photo.png'),'https://www.example.com/photo.png');
  assert.equal(api.writerV102PreviewRemoteUrl('http://example.com/a.png'),'');
  assert.equal(api.writerV102PreviewRemoteUrl('https://localhost/a.png'),'');
@@ -45,10 +45,10 @@ test('Preview supports banner and secure direct HTTPS links with privacy switch'
  assert.equal(api.writerV102PreviewRemoteUrl('https://example.com/file.txt'),'');
  const settings={};api.writerV92ExplorerMerge(settings);
  assert.equal(settings.v92Explorer.previewRemoteImages,true);
- assert.match(read('src/v9/explorer-favorites-preview.js'),/\['banner','cover','image','thumbnail'\]/);
+ assert.match(read('src/workspace/explorer-favorites-preview.js'),/\['banner','cover','image','thumbnail'\]/);
 });
 test('Image source integration filters to safe providers, supports Wikimedia with no key',()=>{
- const api=expose('src/v10/image-inserter.js',['writerV102ImagesMerge','writerV102ImageQuery','writerV102ImageSafeUrl','writerV102ImageNormalize','writerV102ImageExtension']);
+ const api=expose('src/editor/image-inserter.js',['writerV102ImagesMerge','writerV102ImageQuery','writerV102ImageSafeUrl','writerV102ImageNormalize','writerV102ImageExtension']);
  const cfg=api.writerV102ImagesMerge({}),url=api.writerV102ImageQuery(cfg,'a cat',1).url;
  assert.match(url,/commons\.wikimedia\.org/);
  assert.equal(api.writerV102ImageSafeUrl('https://evil.example/a.jpg'),'');
@@ -59,7 +59,7 @@ test('Image source integration filters to safe providers, supports Wikimedia wit
  assert.equal(cfg.mode,'local');
 });
 test('Alignment syntax does not conflict with Markdown pipes, paths, or normal prose',()=>{
- const api=expose('src/v10/inline-alignment.js',['writerV102AlignToken','writerV102AlignMerge']);
+ const api=expose('src/editor/inline-alignment.js',['writerV102AlignToken','writerV102AlignMerge']);
  assert.equal(api.writerV102AlignToken('::c: hello **bold**').side,'center');
  assert.equal(api.writerV102AlignToken('::c: hello **bold**').legacy,false);
  assert.equal(api.writerV102AlignToken('::c[legacy]').legacy,true);
@@ -71,7 +71,7 @@ test('Alignment syntax does not conflict with Markdown pipes, paths, or normal p
  const cfg=api.writerV102AlignMerge({});assert.equal(cfg.enabled,true);
 });
 test('Short suffixes work with native Markdown headings, normal text and legacy notation',()=>{
- const api=expose('src/v10/inline-alignment.js',['writerV102AlignToken','writerV102AlignApply']);
+ const api=expose('src/editor/inline-alignment.js',['writerV102AlignToken','writerV102AlignApply']);
  for(const [line,side] of [['# Chapter {c}','center'],['## Subtitle {r}','right'],
   ['###### Notes {l}','left'],['Text **bold** {c}','center'],
   ['# ::c: Old heading','center'],['::c[old text]','center']]){
@@ -113,7 +113,7 @@ test('Reading View applies heading suffix without losing semantics and overrides
    this.currentNode=nodes[this.index++];return true;
   }
  })};
- const api=expose('src/v10/inline-alignment.js',['writerV102AlignReading'],
+ const api=expose('src/editor/inline-alignment.js',['writerV102AlignReading'],
   {document,NodeFilter:{SHOW_TEXT:4}});
  api.writerV102AlignReading({querySelectorAll:()=>[heading]});
  assert.equal(nodes[0].nodeValue,'Heading');
@@ -121,7 +121,7 @@ test('Reading View applies heading suffix without losing semantics and overrides
  assert.deepEqual(Array.from(applied[0]),['text-align','left','important']);
 });
 test('Native Explorer and voice-note CSS corrections are present in the distributed styles',()=>{
- const css=read('styles.css'),source=read('src/v9/explorer-flex.js');
+ const css=read('styles.css'),source=read('src/workspace/explorer-flex.js');
  assert.ok(css.includes('.writer-v8-chat .writer-v8-chat-voice-toggle{'));
  assert.match(css,/place-items:center/);
  assert.match(css,/writer-v91-flex-hidden/);
@@ -129,8 +129,8 @@ test('Native Explorer and voice-note CSS corrections are present in the distribu
  assert.match(source,/writerFlexConcealed/);
 });
 test('Spaces, bookshelf, command palette and fictional voice-note layout are wired',()=>{
- const spaces=read('src/v9/smart-spaces.js'),books=read('src/v10/bookshelf.js');
- const chat=read('src/v8/finish-blocks.js'),flex=read('src/v9/explorer-flex.js');
+ const spaces=read('src/workspace/smart-spaces.js'),books=read('src/projects/bookshelf.js');
+ const chat=read('src/blocks/finish-blocks.js'),flex=read('src/workspace/explorer-flex.js');
  const css=read('styles.css');
  for(const label of ['v1042-spaces-next',
   'v1042-spaces-previous','v1042-spaces-quick-pin']){
@@ -148,8 +148,9 @@ test('Spaces, bookshelf, command palette and fictional voice-note layout are wir
  assert.doesNotMatch(flex,/container\.appendChild\(row\.node\)/);
 });
 test('Release wiring: bundled code, bilingual docs, CSS and version synchronize',()=>{
- const main=read('main.js'),build=read('scripts/build-v3.js'),css=read('styles.css'),manifest=JSON.parse(read('manifest.json'));
- for(const p of ['v10/image-inserter','v10/inline-alignment'])assert.ok(build.includes(p));
+ const main=read('main.js'),css=read('styles.css'),manifest=JSON.parse(read('manifest.json'));
+ const {sourceIds}=require('../scripts/js-manifest.js');
+ for(const id of ['src/v10/image-inserter.js','src/v10/inline-alignment.js'])assert.ok(sourceIds.includes(id));
  for(const name of ['writerV102ImagesRegister(this)','writerV102AlignRegister(this)',
   'writerV102ImagesMerge(this.settings)','writerV102AlignMerge(this.settings)'])assert.ok(main.includes(name),name);
  assert.equal(manifest.version,require('../package.json').version);

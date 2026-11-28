@@ -3,7 +3,7 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
-const source=fs.readFileSync('src/v10/sidebar-width-1010.js','utf8')+'\n'+fs.readFileSync('src/v11/mobile-panel-actions.js','utf8');
+const source=fs.readFileSync('src/workspace/sidebar-width-1010.js','utf8')+'\n'+fs.readFileSync('src/platform/mobile-panel-actions.js','utf8');
 function harness(options={}){
  const timers=new Map(),observers=[],menus=[],cleanups=[],logs=[];let serial=0;
  const doc={};

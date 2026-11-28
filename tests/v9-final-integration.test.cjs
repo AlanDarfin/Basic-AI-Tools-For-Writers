@@ -3,9 +3,9 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs'),vm=require('node:vm');
 const read=path=>fs.readFileSync(path,'utf8');
-const format=read('src/v9/context-toolbar.js');
-const explorer=read('src/v9/native-explorer.js');
-const home=read('src/v8/home-utilities.js');
+const format=read('src/editor/context-toolbar.js');
+const explorer=read('src/workspace/native-explorer.js');
+const home=read('src/workspace/home-utilities.js');
 const TFile=class TFile{};
 const TFolder=class TFolder{};
 const common={writerUi:(pt,en)=>en,writerModuleOn:(plugin,id)=>plugin.settings.visibleModules?.[id]!==false,
@@ -78,20 +78,21 @@ test('homepage icon accepts trusted vault images and HTTPS but rejects protocols
  assert.equal(hu.icon('<img>'),'book-open');
 });
 test('v9 is registered without adding another sidebar or replacing the mobile editor',()=>{
- const main=read('main.js'),css=read('styles.css'),bundler=read('scripts/build-v3.js');
+ const main=read('main.js'),css=read('styles.css');
+ const {sourceIds}=require('../scripts/js-manifest.js');
  for(const name of ['writerV9RegisterToolbar(this)','writerV9RegisterExplorer(this)',
   'writerV9ToolbarSettings(this.plugin,panel)','writerV9ExplorerSettings(this.plugin,panel)']){
   assert.ok(main.includes(name),name);
  }
- assert.match(bundler,/v9\/context-toolbar/);
- assert.match(bundler,/v9\/native-explorer/);
+ assert.ok(sourceIds.includes('src/v9/context-toolbar.js'));
+ assert.ok(sourceIds.includes('src/v9/native-explorer.js'));
  assert.match(css,/writer-v9-format-toolbar/);
  assert.match(css,/writer-v9-explorer-icon/);
  for(const src of [format,explorer]){
   assert.doesNotMatch(src,/detachLeavesOfType/);
   assert.doesNotMatch(src,/registerView\(/);
  }
- assert.doesNotMatch(read('src/styles/v9-final.css'),/!important/);
+ assert.doesNotMatch(read('src/styles/features/v9-final.css'),/!important/);
 });
 
 test('cMenu-inspired formatting includes underline, super/subscript and headings 1–6',()=>{

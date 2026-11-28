@@ -1,6 +1,6 @@
 'use strict';
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
-const src=fs.readFileSync('src/v9/context-toolbar.js','utf8');
+const src=fs.readFileSync('src/editor/context-toolbar.js','utf8');
 const mode=vm.runInNewContext(src+'\nwriterV1061ToolbarEditingMode');
 test('Reading view never shows formatting bar even when MarkdownView.editor exists',()=>{
  assert.equal(mode({editor:{},getMode:()=> 'preview'}),false);

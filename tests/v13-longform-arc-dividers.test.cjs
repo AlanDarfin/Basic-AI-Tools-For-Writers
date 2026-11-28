@@ -3,39 +3,45 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
-const source=fs.readFileSync('src/v13/longform-dividers.js','utf8');
+const projectsSource=fs.readFileSync('projects.js','utf8');
+const dividersSource=fs.readFileSync('src/projects/longform-dividers.js','utf8');
 const json=value=>JSON.parse(JSON.stringify(value));
 let lastPrompt=null;
-class ProjectsView{
+const context=vm.createContext({module:{exports:{}},require:()=>({
+ ItemView:class{},Modal:class{open(){lastPrompt=this;}},Notice:class{},Menu:class{},getLanguage:()=>'en'
+})});
+vm.runInContext(projectsSource,context);
+const api=vm.runInContext(dividersSource+
+ '\n({writerV13ArcStore,writerV13ArcLayout,writerV13ArcMove,writerV13ArcShift,writerV13ArcPrompt})',context);
+const {ProjectsView,lfFlattenScenes}=context.module.exports;
+class TestProjectsView extends ProjectsView{
  constructor(){
-  this.draft='Principal';
-  this.scenes=[{title:'Chapter 1',indent:0},{title:'Scene 1',indent:1},
-   {title:'Chapter 2',indent:0},{title:'Chapter 3',indent:0}];
-  this.projectData={};
-  this.saved=0;this.rendered=0;
-  this.plugin={settings:{},saveSettings:async()=>{this.saved++;}};
+  super({}, {settings:{},saveSettings:async()=>{this.saved++;}});
+  this.frontmatter={longform:{scenes:['Chapter 1',['Scene 1'],'Chapter 2','Chapter 3']}};
+  this.projectData={drafts:{}};
+  this.saved=0;
+  this.rendered=0;
   this.render=async()=>{this.rendered++;};
-  this.app={vault:{create(){throw Error('Visual divider must not create a note');}}};
+  this.app={
+   vault:{create(){throw Error('Visual divider must not create a note');}},
+   fileManager:{processFrontMatter:async(_file,mutate)=>{
+    const next=json(this.frontmatter);
+    mutate(next);
+    this.frontmatter=next;
+   }}
+  };
  }
  prefs(){return this.projectData;}
- activeScenes(){return this.scenes;}
- async changeScenes(_project,change){change(this.scenes);}
- drawScenes(){}
+ get scenes(){return lfFlattenScenes(this.frontmatter.longform.scenes);}
+ sceneList(){return this.scenes;}
+ async backupIndex(){}
 }
-class TextPrompt{
- constructor(_app,title,done,initial){this.title=title;this.done=done;this.initial=initial;}
- open(){lastPrompt=this;}
-}
-const api=vm.runInNewContext(source+
- '\n({writerV13ArcStore,writerV13ArcLayout,writerV13ArcReanchor,writerV13ArcMove,writerV13ArcShift,writerV13ArcPrompt})',
- {ProjectsView,TextPrompt,lfMsg:(pt,en)=>en,console,Date,Math,
-  Notice:class{},Menu:class{}});
 const project={file:{path:'Bonfire/Index.md'},format:'scenes'};
 test('Longform dividers remain only in Basic preferences, not scene notes or YAML',async()=>{
- const view=new ProjectsView();
+ const view=new TestProjectsView();
  const original=json(view.scenes);
  api.writerV13ArcPrompt(view,project);
- assert.match(lastPrompt.title,/optional text/);
+ assert.match(lastPrompt.titleText,/optional text/);
  await lastPrompt.done('');
  assert.equal(view.saved,1);
  const items=api.writerV13ArcStore(view,project);
@@ -46,7 +52,7 @@ test('Longform dividers remain only in Basic preferences, not scene notes or YAM
  assert.equal(view.rendered,1);
 });
 test('Optional captions appear before the selected chapter, even with subchapters',async()=>{
- const view=new ProjectsView();
+ const view=new TestProjectsView();
  const dividers=api.writerV13ArcStore(view,project);
  dividers.push({id:'a',label:'Part I',before:'Chapter 2'});
  dividers.push({id:'b',label:'',before:null});
@@ -55,7 +61,7 @@ test('Optional captions appear before the selected chapter, even with subchapter
   ['Chapter 1','Part I','Chapter 2','Chapter 3','UNTITLED']);
 });
 test('Moving an arc divider preserves chapter order, no file operations',async()=>{
- const view=new ProjectsView();
+ const view=new TestProjectsView();
  const dividers=api.writerV13ArcStore(view,project);
  dividers.push({id:'a',label:'Act II',before:null});
  const before=json(view.scenes);
@@ -67,7 +73,7 @@ test('Moving an arc divider preserves chapter order, no file operations',async()
  assert.equal(view.saved,2);
 });
 test('Two separators in a row keep their relative order and support retitling',async()=>{
- const view=new ProjectsView();
+ const view=new TestProjectsView();
  const dividers=api.writerV13ArcStore(view,project);
  dividers.push({id:'a',label:'Arc I',before:'Chapter 2'},{id:'b',label:'Arc II',before:'Chapter 2'});
  await api.writerV13ArcMove(view,project,'b','a',false);
@@ -78,7 +84,7 @@ test('Two separators in a row keep their relative order and support retitling',a
  assert.equal(dividers[0].label,'New act title');
 });
 test('Local draft variants inherit independent copies of arc markers',()=>{
- const view=new ProjectsView();
+ const view=new TestProjectsView();
  api.writerV13ArcStore(view,project).push({id:'first',label:'Original',before:'Chapter 2'});
  view.draft='Alternative';
  const variant=api.writerV13ArcStore(view,project);
@@ -87,16 +93,22 @@ test('Local draft variants inherit independent copies of arc markers',()=>{
  view.draft='Principal';
  assert.equal(api.writerV13ArcStore(view,project)[0].label,'Original');
 });
-test('Renaming an anchor chapter updates the divider reference',async()=>{
- const view=new ProjectsView();
+test('Renaming an anchor chapter renders once after the index and divider are saved',async()=>{
+ const view=new TestProjectsView();
  const dividers=api.writerV13ArcStore(view,project);
  dividers.push({id:'a',label:'Beginning',before:'Chapter 2'});
+ const calls=[];
+ view.plugin.saveSettings=async()=>{
+  assert.equal(view.scenes[2].title,'Renamed chapter');
+  assert.equal(dividers[0].before,'Renamed chapter');
+  calls.push('save');
+ };
+ view.render=async()=>calls.push('render');
  await view.changeScenes(project,scenes=>{scenes[2].title='Renamed chapter';});
- assert.equal(dividers[0].before,'Renamed chapter');
- assert.equal(view.saved,1);
+ assert.deepEqual(calls,['save','render']);
 });
 test('Removing several chapters anchors at the next surviving chapter in original order',async()=>{
- const view=new ProjectsView();
+ const view=new TestProjectsView();
  const dividers=api.writerV13ArcStore(view,project);
  dividers.push({id:'a',label:'Act II',before:'Chapter 2'});
  await view.changeScenes(project,scenes=>{
@@ -105,21 +117,57 @@ test('Removing several chapters anchors at the next surviving chapter in origina
  assert.equal(dividers[0].before,'Chapter 3');
 });
 test('Failed index changes do not mutate saved divider anchors',async()=>{
- const view=new ProjectsView();
+ const view=new TestProjectsView();
  const dividers=api.writerV13ArcStore(view,project);
  dividers.push({id:'a',label:'Act II',before:'Chapter 2'});
  // A native frontmatter write can reject after invoking its callback.
- class FailingView{async changeScenes(_project,change){change(view.scenes);throw Error('disk full');}drawScenes(){}}
- // Install independently so the production wrapper captures a rejecting native method.
- vm.runInNewContext(source,{ProjectsView:FailingView,TextPrompt,lfMsg:(_pt,en)=>en,Notice:class{},Menu:class{}});
- await assert.rejects(FailingView.prototype.changeScenes.call(view,project,scenes=>{
+ view.app.fileManager.processFrontMatter=async(_file,mutate)=>{
+  mutate(json(view.frontmatter));
+  throw Error('disk full');
+ };
+ await assert.rejects(view.changeScenes(project,scenes=>{
   scenes[2].title='Not committed';
  }),/disk full/);
  assert.equal(dividers[0].before,'Chapter 2');
  assert.equal(view.saved,0);
+ assert.equal(view.rendered,0);
+});
+test('Local draft edits save scene and divider changes together before one render',async()=>{
+ const view=new TestProjectsView();
+ view.draft='Alternative';
+ view.projectData.drafts.Alternative=json(view.scenes);
+ const dividers=api.writerV13ArcStore(view,project);
+ dividers.push({id:'a',label:'Act II',before:'Chapter 2'});
+ const calls=[];
+ view.app.fileManager.processFrontMatter=async()=>{throw Error('Local drafts do not modify the index');};
+ view.plugin.saveSettings=async()=>{
+  assert.equal(view.projectData.drafts.Alternative[2].title,'Local name');
+  assert.equal(dividers[0].before,'Local name');
+  assert.equal(view.scenes[2].title,'Chapter 2');
+  calls.push('save');
+ };
+ view.render=async()=>calls.push('render');
+ await view.changeScenes(project,scenes=>{scenes[2].title='Local name';});
+ assert.deepEqual(calls,['save','render']);
+});
+test('An index write cannot replace a newer divider placement',async()=>{
+ const view=new TestProjectsView();
+ const dividers=api.writerV13ArcStore(view,project);
+ const divider={id:'a',label:'Act II',before:'Chapter 2'};
+ dividers.push(divider);
+ view.app.fileManager.processFrontMatter=async(_file,mutate)=>{
+  const next=json(view.frontmatter);
+  mutate(next);
+  divider.before='Chapter 1';
+  view.frontmatter=next;
+ };
+ await view.changeScenes(project,scenes=>{scenes[2].title='Renamed chapter';});
+ assert.equal(divider.before,'Chapter 1');
+ assert.equal(view.saved,0);
+ assert.equal(view.rendered,1);
 });
 test('Open divider prompts retain their original draft after the view switches drafts',async()=>{
- const view=new ProjectsView();
+ const view=new TestProjectsView();
  view.projectData.drafts={Alternative:json(view.scenes)};
  api.writerV13ArcPrompt(view,project);
  const originalPrompt=lastPrompt;
@@ -129,7 +177,7 @@ test('Open divider prompts retain their original draft after the view switches d
  assert.equal(Object.prototype.hasOwnProperty.call(view.projectData.arcDividers,'Alternative'),false);
 });
 test('Divider prompts cannot recreate a deleted local draft',async()=>{
- const view=new ProjectsView();view.draft='Alternative';
+ const view=new TestProjectsView();view.draft='Alternative';
  view.projectData.drafts={Alternative:json(view.scenes)};
  api.writerV13ArcPrompt(view,project);
  delete view.projectData.drafts.Alternative;
@@ -138,7 +186,7 @@ test('Divider prompts cannot recreate a deleted local draft',async()=>{
  assert.equal(view.saved,0);
 });
 test('A local draft name is stored as data without changing the prototype',()=>{
- const view=new ProjectsView();view.draft='__proto__';view.projectData.arcDividers={};
+ const view=new TestProjectsView();view.draft='__proto__';view.projectData.arcDividers={};
  const items=api.writerV13ArcStore(view,project);
  items.push({id:'safe',label:'Safe',before:null});
  assert.equal(Object.prototype.hasOwnProperty.call(view.projectData.arcDividers,'__proto__'),true);

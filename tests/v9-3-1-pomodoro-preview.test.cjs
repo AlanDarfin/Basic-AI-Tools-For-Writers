@@ -3,7 +3,7 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs'),vm=require('node:vm');
 const read=p=>fs.readFileSync(p,'utf8');
-const source=read('src/v9/pomodoro.js');
+const source=read('src/workspace/pomodoro.js');
 class TFile{constructor(path){this.path=path;this.extension='md';}}
 const mod=vm.runInNewContext(source+
  '\n({writerV931PomodoroMerge,writerV931PomodoroClock,writerV931PomodoroRemaining,writerV931PomodoroDuration,WriterV931PomodoroController})',
@@ -60,8 +60,8 @@ test('daily log is opt-in, touches only an existing daily note, and never create
  assert.ok(lookups.includes(file.path));
 });
 test('preview button uses neutral color and only clipped descriptions render three-dot indicator',()=>{
- const css=read('src/styles/v9-2-2-iconic-fixes.css');
- const source=read('src/v9/explorer-favorites-preview.js');
+ const css=read('src/styles/native/v9-2-2-iconic-fixes.css');
+ const source=read('src/workspace/explorer-favorites-preview.js');
  assert.match(css,/writer-v921-preview-toggle\.is-active/);
  assert.match(css,/color:var\(--basic-ui-muted,var\(--text-muted\)\)/);
  assert.match(css,/writer-v931-truncated::after/);
@@ -78,6 +78,6 @@ test('responsive Pomodoro UI uses an isolated sidebar and desktop-only status ba
  assert.match(source,/!plugin\.app\.isMobile&&!obs\.Platform\?\.isMobile/);
  assert.match(source,/registerInterval\(window\.setInterval/);
  assert.match(source,/writerV931PomodoroSettings/);
- assert.match(read('src/styles/v9-3-1-pomodoro.css'),/body\.is-mobile/);
+ assert.match(read('src/styles/features/v9-3-1-pomodoro.css'),/body\.is-mobile/);
  assert.doesNotMatch(source,/fetch\s*\(/);
 });

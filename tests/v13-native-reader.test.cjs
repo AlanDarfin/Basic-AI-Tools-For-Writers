@@ -3,7 +3,7 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
-const source=['src/v3/core.js','src/v3/final-suite.js','src/v13/companion-toolkit.js','src/v13/companion-bridge.js'].map(path=>fs.readFileSync(path,'utf8')).join('\n');
+const source=['src/core/core.js','src/writing/final-suite.js','src/integrations/companion-toolkit.js','src/integrations/companion-bridge.js'].map(path=>fs.readFileSync(path,'utf8')).join('\n');
 class Element{
  constructor(){this.children=[];}
  createEl(){const child=new Element();this.children.push(child);return child;}

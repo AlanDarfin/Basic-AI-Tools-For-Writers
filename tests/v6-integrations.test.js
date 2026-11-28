@@ -1,7 +1,8 @@
 'use strict';
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
+const {resolveSourcePath}=require('../scripts/js-manifest.js');
 const files=['src/v6/foundation.js','src/v6/reading.js','src/v6/markup.js','src/v6/linter.js'];
-const source=files.map(p=>fs.readFileSync(p,'utf8')).join('\n');
+const source=files.map(id=>fs.readFileSync(resolveSourcePath(id),'utf8')).join('\n');
 const ctx={console,Intl,Date,Math,Number,String,Object,Array,RegExp,writerUi:(pt,en)=>en||pt,writerModuleOn:()=>true,writerV5RefreshEditors:()=>{},require:name=>{
  if(name==='@codemirror/view')return {WidgetType:class{}};throw Error(name);
 }};
@@ -83,8 +84,9 @@ test('original source and build markers are present in shipped plugin',()=>{
  const main=fs.readFileSync('main.js','utf8');
  for(const file of files)assert.ok(main.includes('// v3 module: '+file));
  for(const cls of ['WriterV6Reading','WriterV6Markup','WriterV6Linter'])assert.ok(main.includes('new '+cls+'(this)'));
- const build=fs.readFileSync('scripts/build-v3.js','utf8');
- assert.ok(build.includes("'v6/foundation'"));assert.ok(build.includes("'v6/linter'"));
+ const {sourceIds}=require('../scripts/js-manifest.js');
+ assert.ok(sourceIds.includes('src/v6/foundation.js'));
+ assert.ok(sourceIds.includes('src/v6/linter.js'));
  assert.ok(fs.readFileSync('styles.css','utf8').includes('writer-v6-rating-editor'));
 });
 console.log(count+' v6 integration regression tests passed');

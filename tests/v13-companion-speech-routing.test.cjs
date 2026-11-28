@@ -3,7 +3,7 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
-const sources=['src/v3/final-suite.js','src/v10/speech-accessibility.js','src/v13/companion-toolkit.js','src/v13/companion-bridge.js'].map(path=>fs.readFileSync(path,'utf8')).join('\n');
+const sources=['src/writing/final-suite.js','src/integrations/speech-accessibility.js','src/integrations/companion-toolkit.js','src/integrations/companion-bridge.js'].map(path=>fs.readFileSync(path,'utf8')).join('\n');
 class Element{
  constructor(tag='div',options={}){this.tag=tag;this.text=options.text||'';this.children=[];this.events={};}
  createEl(tag,options){const child=new Element(tag,options);this.children.push(child);return child;}

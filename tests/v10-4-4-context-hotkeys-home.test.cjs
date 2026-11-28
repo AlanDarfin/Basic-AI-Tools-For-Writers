@@ -10,7 +10,7 @@ function expose(path,keys,extra={}){
  });
 }
 test('Double-key settings migrate old Shift and support multiple mapped keys',()=>{
- const api=expose('src/v10/toolbox.js',[
+ const api=expose('src/workspace/toolbox.js',[
   'writerV10ToolboxMerge','writerV1044DoubleKeyCode',
   'writerV1044DoubleKeyMatch','writerV1044DoubleKeyIsText']);
  const prior={v10Tools:{doubleShift:true,doubleShiftDelay:325,doubleShiftCode:'left'}};
@@ -49,7 +49,7 @@ test('AI context menu groups all actions after later subscribers add them and pr
    setSubmenu(){return this.submenu||(this.submenu=new Menu());}};
   return item;
  }
- const api=expose('src/v9/context-toolbar.js',
+ const api=expose('src/editor/context-toolbar.js',
   ['writerV1044ContextMenus','writerV1044AiKey'],{
    writerModuleOn:()=>true,writerV102AlignApply:()=>{},Menu,
    writerUi:(pt,en)=>en
@@ -94,7 +94,7 @@ test('AI context menu groups all actions after later subscribers add them and pr
  assert.equal(api.writerV1044AiKey('Adicionar link'),'');
 });
 test('Homepage focuses search on desktop and replaces its own leaf',()=>{
- const code=source('src/v8/writing-home.js');
+ const code=source('src/workspace/writing-home.js');
  assert.match(code,/this\.homeSearchInput=input/);
  assert.match(code,/if\(!writerV8HomeIsMobile\(this\.plugin\)\)/);
  assert.match(code,/activeLeaf===this\.leaf/);

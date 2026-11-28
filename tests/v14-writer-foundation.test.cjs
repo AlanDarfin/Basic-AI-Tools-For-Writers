@@ -16,7 +16,7 @@ function setup({obsidian={},globals={}}={}){
   setTimeout:(fn,delay)=>{const id=++timer;jobs.set(id,{fn,delay});return id;},clearTimeout:id=>jobs.delete(id),
   require:()=>({TFile,TFolder,Notice:class{constructor(message){notices.push(message);}},
    ItemView:class{},Modal:class{},...obsidian}),...globals};
- const code=['projects.js','src/v3/core.js','src/v3/complements.js','src/v3/variants.js'].map(read).join('\n');
+ const code=['projects.js','src/core/core.js','src/writing/complements.js','src/writing/variants.js'].map(read).join('\n');
  const api=vm.runInNewContext(code+'\n({getLocale,lfMsg,writerUi,clean,lfProjectSceneFolder,ProjectsView,lfFlattenScenes,lfNestScenes,lfNumberScenes,lfIgnoredScene,lfSessionElapsed,lfMigrateProjectPaths,writerMaskMarkdown,writerGrammarMatchIsSafe,writerSafeReplace,writerParseVariants,writerEncodeVariant,writerVariantAt,WriterComplements,WriterVariants})',sandbox);
  const flush=async delay=>{
   for(const [id,job] of [...jobs])if(job.delay===delay&&jobs.delete(id))await job.fn();

@@ -87,7 +87,7 @@ function markdown(result){
 }
 if(require.main===module){
  const result=auditFromStrings({
-  foundation:read('src/styles/v13-foundation.css'),
+  foundation:read('src/styles/core/v13-foundation.css'),
   surfing:read('src/styles/v12-0-5-home-widgets.css'),
   main:read('main.js'),
   css:read('styles.css')

@@ -1,9 +1,10 @@
 'use strict';
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
+const {resolveSourcePath}=require('../scripts/js-manifest.js');
 class TFile{}
 class ItemView{}
 const expose=(name,items,extra={})=>vm.runInNewContext(
- fs.readFileSync('src/v10/'+name+'.js','utf8')+'\n({'+items.join(',')+'})',
+ fs.readFileSync(resolveSourcePath('src/v10/'+name+'.js'),'utf8')+'\n({'+items.join(',')+'})',
  {console,Math,Date,Number,String,JSON,Set,Map,Array,Uint8Array,URL,TFile,ItemView,Promise,
   writerUi:(pt,en)=>en,writerV83StudySchedule:()=>({interval:10}),...extra}
 );
@@ -116,10 +117,11 @@ test('Cross-note move extracts either a selection or full block safely',()=>{
  assert.equal(media.writerV107CrossNoteBlock(editor).text,'- Parent\n  - child');
 });
 test('All 10.7 sources are restored in active source list and package',()=>{
- const read=p=>fs.readFileSync(p,'utf8'),build=read('scripts/build-v3.js'),enhancements=read('src/v10/enhancements.js');
+ const read=p=>fs.readFileSync(p,'utf8'),enhancements=read('src/core/enhancements.js');
+ const {sourceIds}=require('../scripts/js-manifest.js');
  for(const name of ['data-tables','zotero-web','study-fsrs','calendar-feeds','story-graph','editor-pro','speech-accessibility','media-drag-extension','integrations-107']){
-  assert.ok(build.match(/const sources=(\[[^;]+\]);/)?.[1].includes("'v10/"+name+"'"));
-  assert.ok(fs.existsSync('src/v10/'+name+'.js'));
+  assert.ok(sourceIds.includes('src/v10/'+name+'.js'));
+  assert.ok(fs.existsSync(resolveSourcePath('src/v10/'+name+'.js')));
  }
  assert.match(enhancements,/writerV107RegisterAfterStartup\(plugin\)/);
  assert.match(enhancements,/writerV107Settings\(plugin,panel\)/);

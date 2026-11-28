@@ -3,14 +3,14 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
-const src=fs.readFileSync('src/v4/auto-grammar.js','utf8');
+const src=fs.readFileSync('src/writing/auto-grammar.js','utf8');
 const main=fs.readFileSync('main.js','utf8');
-const tools=fs.readFileSync('src/v3/workspace.js','utf8');
+const tools=fs.readFileSync('src/workspace/workspace.js','utf8');
 const read=()=>new Map();
 function externalMethods(){
  const from=main.indexOf('  externalLanguageTool(){'),end=main.indexOf('  async checkGrammar(text){',from);
  assert.ok(from>0&&end>from);
- return vm.runInNewContext(fs.readFileSync('src/v13/grammar-companion.js','utf8')+
+ return vm.runInNewContext(fs.readFileSync('src/integrations/grammar-companion.js','utf8')+
   '\nnew (class {'+main.slice(from,end)+'})()',{
    writerModuleOn:(plugin,id)=>plugin.settings.visibleModules?.[id]!==false,
    writerUi:pt=>pt,Notice:class{},msg:pt=>pt

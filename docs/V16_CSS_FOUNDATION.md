@@ -1,0 +1,82 @@
+# Basic v16 — CSS foundation (working plan)
+
+Status: fourth implementation phase (pilot file relocation); version remains unchanged until integration and release.
+
+## Design contracts
+- Native theme tokens remain authoritative. No global reset, no !important escalation and no changes to third-party DOM without a feature-specific host.
+- Keep the existing build order during the migration. Move styles by responsibility only after equivalence is verified.
+- Width precedence: explicit Editor Width Slider (including its per-note and temporary values), then StyleMate, then Focus Mode's fallback, then native defaults. Focus must never constrain the whole reading scroll container.
+- StyleMate reading-mode typography is restricted to native prose wrappers. Live Preview uses CodeMirror metrics; its embedded widgets need dedicated visual QA before additional overrides.
+- Desktop status positioning has one owner. Mobile status must reserve space in actual Markdown scroll surfaces, without moving native nodes unnecessarily or adding clearance when the keyboard is visible.
+- Preserve existing CSS class names, Markdown formats, settings and exports.
+
+## Migration stages
+1. Foundation (this PR): remove obsolete centered desktop dock and contradictory breakpoint; scope property positioning; isolate reading typography; establish width precedence; gate Typewriter padding by actual editor engagement.
+2. Native/mobile: audit explorer controls, mobile toolbar and status geometry; test keyboard and split-pane resizing; ensure cleanup on disable.
+3. Components: reconcile repeated style rules for Timeline (separate PR), Longform, Spaces, Homepage and LanguageTool; use scoped component tokens.
+4. Organize source modules by core/native/editor/blocks/features/mobile/compat, using an explicit build manifest and checking generated CSS equivalence at each move.
+5. CSS regression gate: full build, cascade audit and visual QA. Reconcile Timeline PR #175 and verify a clean baseline before JS changes.
+6–11. JavaScript architecture and integration: see [V16 modernization roadmap](V16_MODERNIZATION_ROADMAP.md). No version bump before both CSS and JavaScript gates pass.
+
+## Verification
+Run npm run build:css, npm run check:css, npm test. Test editor width with each feature alone and all combinations; test StyleMate with a timeline, callout, embedded note and chat block; compare native property and status layouts before and after disabling Basic. Validate native mobile scrolling with and without virtual keyboard. Static tests are not substitutes for real rendering.
+
+## Phase 2 — native/mobile implementation
+
+- Measured overlap is now applied to visible top-level Markdown reading and CodeMirror scroll surfaces, including horizontal pane intersection. Embedded notes and non-Markdown plugin editors are excluded.
+- Existing native bottom padding is preserved when larger; the measured override is removed for keyboard, hidden bars, nonoverlapping panes and plugin unload. Turning only the custom status row off still compensates for an overlapping native floating navbar.
+- Explorer control sizing is limited to Basic's preview and Spaces actions. Reorder titles alone receive truncation rules. Other native/third-party action buttons and titles retain theme sizing.
+- Runtime main.js and shipping CSS were synchronized by verified source replacement. Full build/CI and visual Android verification are still required; mock geometry tests cannot prove actual WebView layout.
+- Follow-up visual QA: confirm CodeMirror scroll extent, real keyboard open/close, landscape/split panes, toolbar with themes and external plugins, end-of-note reachability, native status row restore and hit targets.
+
+## Phase 3 — component layout (first pass)
+
+- Longform narrow-pane scene grid declares the third action column explicitly; shrinkable titles prevent min-content width from dominating.
+- Homepage narrow viewport and mobile retain the 12-track grid model while cards span the full row where required. Header wrapping is scoped to Basic's own widget headings rather than arbitrary nested controls.
+- Spaces chip labels can shrink and truncate without squeezing the options button.
+- LanguageTool review action grid adapts to available pane width, with wrapping button labels and bounded widths.
+- Timeline CSS remains owned by PR #175; reconcile after integration rather than applying competing changes here.
+- Source replacements and shipping CSS synchronized, followed by deduplication and isolated CSS audit tests. Full build, full test suite, visual QA and any further cascade consolidation remain pending.
+
+## Phase 4 — ordered ownership manifest (first pass)
+
+- `scripts/css-manifest.js` records the existing 53 stylesheet modules in their exact historical cascade order, with core/native/editor/blocks/features/mobile/compat ownership metadata. Category never changes cascade.
+- The CSS builder and repository audit use the same manifest. Six historical registration tests now inspect the manifest; new regression checks cover duplicates, invalid paths, categories and ordering.
+- No stylesheet files were physically relocated in this pass. Establish a complete reproducible build and audit all path consumers before moving modules to ownership folders. No shipped CSS or JS runtime changes are intended by this tooling-only step.
+- The old and new manifest order were compared programmatically. Full repository build and runtime tests remain pending.
+
+## Phase 4 — pilot physical relocation and CI follow-up
+
+- CI run 1363 completed the clean bundle rebuild and ran all 178 regression files: 175 passed and 3 failed. The failures asserted old CSS contracts: unengaged Typewriter padding, an implicit Longform action column, and obsolete desktop status geometry. All three assertions were updated to verify the intended scoped contracts rather than removing coverage.
+- Physically relocated `legacy-dictionary-settings.css` and `legacy-templates.css` into `src/styles/compat/`, and `legacy-writing-tools.css` into `src/styles/editor/`. Each destination blob was verified identical to its original before the old path was removed. Manifest positions were preserved exactly; no runtime changes are intended.
+- Added regression checks for the new paths, ownership, uniqueness and cascade order. Other modules remain in place until their path consumers and CI are checked.
+- The previous full build succeeded; the new commit still requires clean build/CI verification. Actual Android and desktop visual checks remain outstanding.
+
+## Phase 4 — batch 2 (core, editor, mobile, native, compatibility)
+
+- Baseline CI #1370 passed all 178 regression files, full rebuild, bundle synchronization, CSS lint, bilingual metadata and package smoke test.
+- Relocate 13 additional modules into their existing ownership categories; 16/53 files now have categorized physical paths. Keep exact original blobs and relative cascade order. Timeline PR #175 remains independent; do not relocate its files before reconciliation.
+- Update four known test path consumers, extend the manifest to reject duplicate basenames and category/path mismatches, and add regression checks for moved files and absence of obsolete duplicates.
+- Use a single Git tree/commit for the entire batch, so no intermediate branch state contains duplicated or missing modules. The next CI must confirm all test paths and clean build.
+
+## Phase 4 — batch 3 (feature and block sources)
+
+- Baseline CI #1371: full rebuild, bundle synchronization, 178/178 regression files, CSS lint and package smoke test passed.
+- Relocate 22 feature/block sources in one atomic Git commit, retaining original blob hashes and manifest order. Total categorized physical modules: 38/53.
+- Update 10 historical test path consumers and add a recursive stylesheet inventory check against the manifest, including duplicate/unregistered files.
+- Defer the two timeline sources and the Homepage widget source referenced by the separate Timeline PR #175 until integration; the other remaining modules have additional path consumers that will be migrated in a subsequent batch.
+- No generated artifact changes are intended; latest CI and visual QA remain pending.
+
+## Phase 4 — batch 4 (principal components)
+
+- Relocate nine further sources: Homepage, Longform/projects, tools, LanguageTool review, Pomodoro, Chat, Chat audio, Calendar and historical feature overrides. Total categorized physical modules: 47/53.
+- Update 12 historical test path consumers and add component path regression coverage. Both distributable blob hashes and the complete ordered module basename sequence remain unchanged.
+- Six flat paths remain: foundation, workflow, iconic fixes, both Timeline modules and Homepage widgets. The first three have numerous test/audit consumers; the last three are deferred to avoid conflicts with Timeline PR #175.
+- Latest CI remains pending. No JavaScript runtime changes or visual verification in this stage.
+
+## Phase 4 — batch 5 (foundation, workflow and native fixes)
+
+- Baseline CI #1373 passed all 178 regression files, bundle synchronization, lint, metadata and packaging.
+- Move the foundation, historical workflow and iconic fixes into core/, features/ and native/, preserving original Git blobs and cascade slots. Total categorized modules: 50/53.
+- Update audit and historical test source consumers; retain historical documentation as a record of past releases. Add categorized path coverage.
+- Three flat paths remain deliberately deferred: both Timeline sources and Homepage widgets, pending separate PR #175 integration. No runtime artifact changes or JS runtime refactor. Latest CI and visual QA remain pending.

@@ -14,23 +14,24 @@ test('v6 planning does not silently change stable Obsidian manifest',()=>{
  assert.equal(manifest.isDesktopOnly,false);
 });
 test('Markdown spoiler is already owned by Extended Syntax',()=>{
- const ext=read('src/v5/extended-syntax.js');
+ const ext=read('src/editor/extended-syntax.js');
  assert.match(ext,/spoiler:true/);
  assert.match(ext,/\['spoiler','spoiler'/);
  assert.match(ext,/registerMarkdownPostProcessor/);
  assert.match(ext,/registerEditorExtension/);
 });
 test('both existing typing modules are preserved before the new linter',()=>{
- const easy=read('src/v5/easy-typing.js'),typo=read('src/v5/smart-typography.js');
+ const easy=read('src/editor/easy-typing.js'),typo=read('src/editor/smart-typography.js');
  assert.match(easy,/clipboardInputFilter/);
  assert.match(easy,/writerEasyTabOut/);
  assert.match(typo,/transactionFilter/);
  assert.match(typo,/writerTypingUnsafeContext/);
 });
 test('canonical Longform and plugin bundle scripts are present',()=>{
- const build=read('scripts/build-v3.js'),sync=read('scripts/sync-projects.js');
- assert.ok(build.includes('src/v3/'));
- assert.ok(build.includes("'v5/"));
+ const sync=read('scripts/sync-projects.js');
+ const {sourceIds}=require('../scripts/js-manifest.js');
+ assert.ok(sourceIds.some(id=>id.startsWith('src/v3/')));
+ assert.ok(sourceIds.some(id=>id.startsWith('src/v5/')));
  assert.ok(sync.includes('projects.js'));
  assert.ok(sync.includes('main.js'));
  assert.ok(read('projects.js').includes('lastLongformProject'));

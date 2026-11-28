@@ -1337,7 +1337,7 @@ select:not([multiple]){
 }
 /* Own line marker tracks CodeMirror's selection on desktop and mobile. */
 /* Keep the text aligned on every line while reserving room for the accent rail. */
-body.writer-v4-typewriter .cm-editor .cm-line{
+body.writer-v4-typewriter .cm-editor.writer-v4-typewriter-engaged .cm-line{
  padding-inline-start:10px;
 }
 body.writer-v4-typewriter .cm-editor.writer-v4-typewriter-engaged .cm-line.writer-v4-typewriter-current-line{
@@ -1355,7 +1355,7 @@ body.writer-v4-typewriter .cm-editor.writer-v4-typewriter-engaged .cm-line.write
  background-color:var(--interactive-accent);
  pointer-events:none;
 }
-body.writer-v4-typewriter .cm-editor .cm-scroller{scroll-padding-block:40vh}
+/* Typewriter scroll positioning is handled by CodeMirror transactions. */
 @media(max-width:520px){
  .writer-project-scene-actions .writer-project-drag-handle{flex-basis:40px}
 }
@@ -3018,7 +3018,8 @@ body.writer-v4-typewriter-focus .cm-editor.writer-v4-typewriter-engaged .cm-line
  transition:opacity .15s ease;
 }
 .writer-v7-focus-mode .view-header:hover,.writer-v7-focus-mode .view-header:focus-within{opacity:1}
-.writer-v7-focus-mode :is(.cm-content,.markdown-preview-view){
+/* Focus only supplies a fallback width when neither width tool owns it. */
+.writer-v7-focus-mode :is(.cm-sizer,.markdown-preview-sizer):not(:where(.writer-v1010-editor-width *,.writer-v92-style *)){
  max-width:min(100%,900px);
  margin-inline:auto;
 }
@@ -6155,50 +6156,57 @@ body.is-mobile .workspace-leaf-content[data-type="file-explorer"] .writer-v92-pr
 .writer-v92-meta-inline input[type="number"]{width:5em;}
 .writer-v92-style .markdown-preview-view,
 .writer-v92-style .markdown-source-view{
- --file-line-width:var(--writer-v92-width);
+ --file-line-width:var(--basic-editor-width,var(--writer-v92-width));
 }
-.writer-v92-style .markdown-preview-view .markdown-preview-sizer,
+/* StyleMate targets native prose wrappers, not rendered code-block widgets. */
+.writer-v92-style .markdown-preview-view .markdown-preview-sizer > :is(.el-p,.el-ul,.el-ol,.el-blockquote,.el-h1,.el-h2,.el-h3,.el-h4,.el-h5,.el-h6),
 .writer-v92-style .markdown-source-view .cm-content{
  font-size:var(--writer-v92-font-size);
  line-height:var(--writer-v92-line-height);
  color:var(--writer-v92-body-color,var(--text-normal));
 }
-.writer-v92-style .markdown-preview-view p{margin-block-end:var(--writer-v92-paragraph-spacing,var(--p-spacing));}
-.writer-v92-style .markdown-preview-view :is(ul,ol){padding-inline-start:var(--writer-v92-list-indent,var(--list-indent));}
-.writer-v92-style .markdown-preview-view li::marker{color:var(--writer-v92-bullet-color,var(--list-marker-color));}
-.writer-v92-style .markdown-preview-view a{color:var(--writer-v92-link-color,var(--link-color));}
-.writer-v92-style .markdown-preview-view a.external-link{color:var(--writer-v92-link-color,var(--link-external-color));}
-.writer-v92-style .markdown-preview-view blockquote{
+.writer-v92-style .markdown-preview-view :where(.markdown-preview-sizer > :is(.el-p,.el-ul,.el-ol,.el-blockquote,.el-h1,.el-h2,.el-h3,.el-h4,.el-h5,.el-h6)) p{margin-block-end:var(--writer-v92-paragraph-spacing,var(--p-spacing));}
+.writer-v92-style .markdown-preview-view :where(.markdown-preview-sizer > :is(.el-p,.el-ul,.el-ol,.el-blockquote,.el-h1,.el-h2,.el-h3,.el-h4,.el-h5,.el-h6)) :is(ul,ol){padding-inline-start:var(--writer-v92-list-indent,var(--list-indent));}
+.writer-v92-style .markdown-preview-view :where(.markdown-preview-sizer > :is(.el-p,.el-ul,.el-ol,.el-blockquote,.el-h1,.el-h2,.el-h3,.el-h4,.el-h5,.el-h6)) li::marker{color:var(--writer-v92-bullet-color,var(--list-marker-color));}
+.writer-v92-style .markdown-preview-view :where(.markdown-preview-sizer > :is(.el-p,.el-ul,.el-ol,.el-blockquote,.el-h1,.el-h2,.el-h3,.el-h4,.el-h5,.el-h6)) a{color:var(--writer-v92-link-color,var(--link-color));}
+.writer-v92-style .markdown-preview-view :where(.markdown-preview-sizer > :is(.el-p,.el-ul,.el-ol,.el-blockquote,.el-h1,.el-h2,.el-h3,.el-h4,.el-h5,.el-h6)) a.external-link{color:var(--writer-v92-link-color,var(--link-external-color));}
+.writer-v92-style .markdown-preview-view :where(.markdown-preview-sizer > :is(.el-p,.el-ul,.el-ol,.el-blockquote,.el-h1,.el-h2,.el-h3,.el-h4,.el-h5,.el-h6)) blockquote{
  color:var(--writer-v92-quote-color,var(--blockquote-color));
  border-inline-start-color:var(--writer-v92-quote-border,var(--blockquote-border-color));
  border-radius:var(--writer-v92-quote-radius,0);
 }
-.writer-v92-style :is(.markdown-preview-view,.markdown-source-view) :is(h1,.cm-header-1){
+.writer-v92-style .markdown-preview-view :where(.markdown-preview-sizer > :is(.el-p,.el-ul,.el-ol,.el-blockquote,.el-h1,.el-h2,.el-h3,.el-h4,.el-h5,.el-h6)) h1,
+.writer-v92-style .markdown-source-view .cm-line .cm-header-1{
  --writer-v92-heading-size:var(--writer-v92-h1-size,var(--h1-size));
  --writer-v92-specific-heading-color:var(--writer-v92-h1-color,var(--writer-v92-heading-color,var(--h1-color)));
 }
-.writer-v92-style :is(.markdown-preview-view,.markdown-source-view) :is(h2,.cm-header-2){
+.writer-v92-style .markdown-preview-view :where(.markdown-preview-sizer > :is(.el-p,.el-ul,.el-ol,.el-blockquote,.el-h1,.el-h2,.el-h3,.el-h4,.el-h5,.el-h6)) h2,
+.writer-v92-style .markdown-source-view .cm-line .cm-header-2{
  --writer-v92-heading-size:var(--writer-v92-h2-size,var(--h2-size));
  --writer-v92-specific-heading-color:var(--writer-v92-h2-color,var(--writer-v92-heading-color,var(--h2-color)));
 }
-.writer-v92-style :is(.markdown-preview-view,.markdown-source-view) :is(h3,.cm-header-3){
+.writer-v92-style .markdown-preview-view :where(.markdown-preview-sizer > :is(.el-p,.el-ul,.el-ol,.el-blockquote,.el-h1,.el-h2,.el-h3,.el-h4,.el-h5,.el-h6)) h3,
+.writer-v92-style .markdown-source-view .cm-line .cm-header-3{
  --writer-v92-heading-size:var(--writer-v92-h3-size,var(--h3-size));
  --writer-v92-specific-heading-color:var(--writer-v92-h3-color,var(--writer-v92-heading-color,var(--h3-color)));
 }
-.writer-v92-style :is(.markdown-preview-view,.markdown-source-view) :is(h4,.cm-header-4){
+.writer-v92-style .markdown-preview-view :where(.markdown-preview-sizer > :is(.el-p,.el-ul,.el-ol,.el-blockquote,.el-h1,.el-h2,.el-h3,.el-h4,.el-h5,.el-h6)) h4,
+.writer-v92-style .markdown-source-view .cm-line .cm-header-4{
  --writer-v92-heading-size:var(--writer-v92-h4-size,var(--h4-size));
  --writer-v92-specific-heading-color:var(--writer-v92-h4-color,var(--writer-v92-heading-color,var(--h4-color)));
 }
-.writer-v92-style :is(.markdown-preview-view,.markdown-source-view) :is(h5,.cm-header-5){
+.writer-v92-style .markdown-preview-view :where(.markdown-preview-sizer > :is(.el-p,.el-ul,.el-ol,.el-blockquote,.el-h1,.el-h2,.el-h3,.el-h4,.el-h5,.el-h6)) h5,
+.writer-v92-style .markdown-source-view .cm-line .cm-header-5{
  --writer-v92-heading-size:var(--writer-v92-h5-size,var(--h5-size));
  --writer-v92-specific-heading-color:var(--writer-v92-h5-color,var(--writer-v92-heading-color,var(--h5-color)));
 }
-.writer-v92-style :is(.markdown-preview-view,.markdown-source-view) :is(h6,.cm-header-6){
+.writer-v92-style .markdown-preview-view :where(.markdown-preview-sizer > :is(.el-p,.el-ul,.el-ol,.el-blockquote,.el-h1,.el-h2,.el-h3,.el-h4,.el-h5,.el-h6)) h6,
+.writer-v92-style .markdown-source-view .cm-line .cm-header-6{
  --writer-v92-heading-size:var(--writer-v92-h6-size,var(--h6-size));
  --writer-v92-specific-heading-color:var(--writer-v92-h6-color,var(--writer-v92-heading-color,var(--h6-color)));
 }
-.writer-v92-style :is(.markdown-preview-view,.markdown-source-view)
- :is(h1,h2,h3,h4,h5,h6,.cm-header-1,.cm-header-2,.cm-header-3,.cm-header-4,.cm-header-5,.cm-header-6){
+.writer-v92-style .markdown-preview-view :where(.markdown-preview-sizer > :is(.el-p,.el-ul,.el-ol,.el-blockquote,.el-h1,.el-h2,.el-h3,.el-h4,.el-h5,.el-h6)) :is(h1,h2,h3,h4,h5,h6),
+.writer-v92-style .markdown-source-view .cm-line :is(.cm-header-1,.cm-header-2,.cm-header-3,.cm-header-4,.cm-header-5,.cm-header-6){
  font-size:var(--writer-v92-heading-size);
  color:var(--writer-v92-specific-heading-color,var(--basic-ui-text,var(--text-normal)));
 }
@@ -6680,12 +6688,12 @@ body.is-mobile .writer-v9215-flow-editor textarea{min-height:120px;}
  max-width:180px;min-width:0;font-size:var(--font-ui-smaller);padding-inline:6px;
 }
 .writer-v9216-space-chip > span{
- display:block;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;
+ display:block;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;
 }
 .writer-v9216-spaces-dock svg{display:block;flex:0 0 16px;width:16px;height:16px;}
 .writer-v9216-space-chip svg{color:var(--writer-v9216-space-color,currentColor);}
 .writer-v9216-spaces-dock .writer-v9216-space-options{
- min-width:25px;width:25px;padding:2px;opacity:.7;
+ flex:0 0 auto;min-width:25px;width:25px;padding:2px;opacity:.7;
 }
 .writer-v9216-space-inactive{
  color:var(--basic-ui-muted,var(--text-muted));font-size:var(--font-ui-smaller);
@@ -6762,26 +6770,22 @@ body.is-mobile .inline-title > .writer-v9-inline-title-icon,
 body.is-mobile .inline-title > .writer-v9215-pretty-icon{
  top:-.02em;vertical-align:middle;
 }
-/* Larger explorer toolbar pictograms; mobile native actions live at the bottom. */
-.workspace-leaf-content[data-type="file-explorer"] .nav-action-button{
- min-width:33px;min-height:33px;
+/* Basic-owned explorer actions only; native and third-party buttons keep their theme sizing. */
+.workspace-leaf-content[data-type="file-explorer"] :is(.writer-v921-preview-toggle,.writer-v93-space-manage-action){
  display:inline-flex;align-items:center;justify-content:center;
+ min-width:30px;min-height:30px;flex:0 0 auto;
 }
-.workspace-leaf-content[data-type="file-explorer"] .nav-buttons-container .nav-action-button svg,
-.workspace-leaf-content[data-type="file-explorer"] .nav-header .nav-action-button svg,
-.workspace-leaf-content[data-type="file-explorer"] .writer-v93-space-manage-action svg{
- width:21px;height:21px;display:block;stroke-width:1.9;
+.workspace-leaf-content[data-type="file-explorer"] :is(.writer-v921-preview-toggle,.writer-v93-space-manage-action) svg{
+ display:block;width:18px;height:18px;stroke-width:1.9;
 }
-.workspace-leaf-content[data-type="file-explorer"] .writer-v93-space-manage-action{
- flex:0 0 auto;color:var(--basic-ui-muted,var(--text-muted));
-}
-body.is-mobile .workspace-leaf-content[data-type="file-explorer"] .nav-action-button{
+body.is-mobile .workspace-leaf-content[data-type="file-explorer"] :is(.writer-v921-preview-toggle,.writer-v93-space-manage-action){
  min-width:40px;min-height:40px;
 }
-body.is-mobile .workspace-leaf-content[data-type="file-explorer"] .nav-buttons-container .nav-action-button svg,
-body.is-mobile .workspace-leaf-content[data-type="file-explorer"] .nav-header .nav-action-button svg,
-body.is-mobile .workspace-leaf-content[data-type="file-explorer"] .writer-v93-space-manage-action svg{
- width:25px;height:25px;
+body.is-mobile .workspace-leaf-content[data-type="file-explorer"] :is(.writer-v921-preview-toggle,.writer-v93-space-manage-action) svg{
+ width:22px;height:22px;
+}
+.workspace-leaf-content[data-type="file-explorer"] .writer-v93-space-manage-action{
+ color:var(--basic-ui-muted,var(--text-muted));
 }
 /* Explorer arrows are an opt-in editing overlay, not part of every row.
    Keep the mobile tree at Obsidian's normal compact height. */
@@ -6815,22 +6819,10 @@ body.is-mobile .workspace-leaf-content[data-type="file-explorer"]
  min-height:36px;
  align-items:center;
 }
-/* Do not impose a height on actual folder-note descriptions, thumbnails,
-   or preview shells: those deliberately occupy extra vertical space. */
-body.is-mobile .workspace-leaf-content[data-type="file-explorer"]
- :is(.nav-file-title,.nav-folder-title):not(.writer-v92-has-preview){
- box-sizing:border-box;
- min-height:36px;
- max-height:44px;
- padding-block:3px;
- align-items:center;
-}
-body.is-mobile .workspace-leaf-content[data-type="file-explorer"] .nav-file-title-content,
-body.is-mobile .workspace-leaf-content[data-type="file-explorer"] .nav-folder-title-content{
- min-width:0;
- overflow:hidden;
- text-overflow:ellipsis;
- white-space:nowrap;
+/* Truncate only the rows carrying Basic's explicit reorder controls. Native
+ * rows and folder previews keep their own wrapping and height. */
+body.is-mobile .workspace-leaf-content[data-type="file-explorer"] .writer-v1047-reorder-title :is(.nav-file-title-content,.nav-folder-title-content){
+ min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
 }
 body.is-mobile .workspace-leaf-content[data-type="file-explorer"]
  .writer-v1047-reorder-title .writer-v93-reorder-action:focus-visible{
@@ -6943,40 +6935,7 @@ body.is-mobile .writer-v93-flow-layout-board > .writer-v93-flow-items{
  overflow:visible;
  white-space:normal;
 }
-/* Make the native mobile explorer toolbar readable and touch friendly. */
-.workspace-leaf-content[data-type="file-explorer"] .nav-action-buttons .nav-action-button,
-.workspace-leaf-content[data-type="file-explorer"] .nav-buttons-container .nav-action-button,
-.workspace-leaf-content[data-type="file-explorer"] .nav-header .nav-action-button{
- display:inline-flex;
- align-items:center;
- justify-content:center;
- min-width:38px;
- min-height:38px;
- line-height:0;
-}
-.workspace-leaf-content[data-type="file-explorer"] .nav-action-buttons .nav-action-button svg,
-.workspace-leaf-content[data-type="file-explorer"] .nav-buttons-container .nav-action-button svg,
-.workspace-leaf-content[data-type="file-explorer"] .nav-header .nav-action-button svg,
-.workspace-leaf-content[data-type="file-explorer"] .writer-v93-space-manage-action svg{
- display:block;
- flex:0 0 23px;
- width:23px;
- height:23px;
-}
-body.is-mobile .workspace-leaf-content[data-type="file-explorer"] .nav-action-buttons .nav-action-button,
-body.is-mobile .workspace-leaf-content[data-type="file-explorer"] .nav-buttons-container .nav-action-button,
-body.is-mobile .workspace-leaf-content[data-type="file-explorer"] .nav-header .nav-action-button{
- min-width:43px;
- min-height:43px;
-}
-body.is-mobile .workspace-leaf-content[data-type="file-explorer"] .nav-action-buttons .nav-action-button svg,
-body.is-mobile .workspace-leaf-content[data-type="file-explorer"] .nav-buttons-container .nav-action-button svg,
-body.is-mobile .workspace-leaf-content[data-type="file-explorer"] .nav-header .nav-action-button svg,
-body.is-mobile .workspace-leaf-content[data-type="file-explorer"] .writer-v93-space-manage-action svg{
- flex-basis:27px;
- width:27px;
- height:27px;
-}
+/* Explorer button geometry is defined in the Basic-owned action rule above. */
 /* 9.3.1 — Preview toggle inherits the same neutral pictogram color as neighbors. */
 .workspace-leaf-content[data-type="file-explorer"] .nav-action-button.writer-v921-preview-toggle,
 .workspace-leaf-content[data-type="file-explorer"] .nav-action-button.writer-v921-preview-toggle.is-active,
@@ -7194,11 +7153,13 @@ body.is-mobile .writer-v924-masonry>.writer-v924-column{width:100%;flex:none;gap
 }
 @media(max-width:720px){
  .writer-v8-home .writer-v8-home-grid.writer-v925-grid{
+  grid-template-columns:minmax(0,1fr);
   gap:10px;
  }
  .writer-v925-grid>[data-section][data-widget-size="wide"]{grid-column:span 1;}
 }
 body.is-mobile .writer-v8-home .writer-v8-home-grid.writer-v925-grid{
+ grid-template-columns:minmax(0,1fr);
  gap:10px;
 }
 body.is-mobile .writer-v925-grid>[data-section][data-widget-size="wide"]{grid-column:span 1;}
@@ -7895,7 +7856,7 @@ body.is-mobile .writer-v8-chat .writer-v8-chat-transcript-text{padding:9px 10px;
 .writer-v102-spaces-empty{color:var(--basic-ui-muted,var(--text-muted));padding:var(--size-4-4);text-align:center}
 
 /* Native property editor stays intact: visual-only per-note and global hiding. */
-.metadata-property{position:relative}
+.metadata-property.writer-v102-property-action-host{position:relative}
 .metadata-property .writer-v102-property-actions{position:absolute;inset-inline-end:4px;top:4px;z-index:2;min-width:27px;min-height:27px;width:27px;height:27px;display:inline-flex;align-items:center;justify-content:center;padding:4px;border:0;border-radius:var(--basic-ui-radius-small,var(--radius-s));background:var(--basic-ui-surface,var(--background-secondary));color:var(--basic-ui-muted,var(--text-muted));opacity:0;box-shadow:none}
 .metadata-property:is(:hover,:focus-within) .writer-v102-property-actions{opacity:1}
 .metadata-property .writer-v102-property-actions svg{width:15px;height:15px}
@@ -7977,23 +7938,7 @@ body.is-mobile .writer-v8-chat .writer-v8-chat-transcript-text{padding:9px 10px;
 @media(max-width:700px){.modal.writer-v102-image-modal-host{width:calc(100vw - 16px);max-width:calc(100vw - 16px)}}
 
 
-/* Desktop: larger, consistent native explorer toolbar hit targets without enlarging mobile UI. */
-body:not(.is-mobile) .workspace-leaf-content[data-type="file-explorer"] .nav-action-buttons .nav-action-button,
-body:not(.is-mobile) .workspace-leaf-content[data-type="file-explorer"] .nav-buttons-container .nav-action-button{
- min-width:30px;
- width:30px;
- min-height:30px;
- height:30px;
- padding:6px;
- display:inline-flex;
- justify-content:center;
- align-items:center;
- flex:0 0 30px;
-}
-body:not(.is-mobile) .workspace-leaf-content[data-type="file-explorer"] .nav-action-button svg{
- width:18px;
- height:18px;
-}
+/* Basic-owned explorer control sizes are defined in v9-2-2-iconic-fixes.css. */
 body:not(.is-mobile) .writer-v93-mobile-spaces-entry{display:none;}
 
 
@@ -9700,6 +9645,7 @@ body.is-mobile .dictionary-settings-subtabs button{
 }
 /* Replace old faux address bar selectors entirely. */
 .writer-v8-home .writer-v8-home-grid.writer-v925-grid{
+ grid-template-columns:repeat(12,minmax(0,1fr));
 }
 .writer-v8-home .writer-v925-grid>[data-section]{
  grid-column:span 6;position:relative;
@@ -9827,7 +9773,7 @@ body.is-mobile .writer-v1205-bookmarks-widget .writer-v1203-web-bookmark-more{
 }
 @media(max-width:720px){
  .writer-v8-home .writer-v8-home-grid.writer-v925-grid{
-  grid-template-columns:minmax(0,1fr);
+  grid-template-columns:repeat(var(--writer-home-grid-columns,12),minmax(0,1fr));
  }
  .writer-v8-home .writer-v925-grid>[data-section]{
   grid-column:1/-1;width:100%;max-width:100%;
@@ -9835,7 +9781,7 @@ body.is-mobile .writer-v1205-bookmarks-widget .writer-v1203-web-bookmark-more{
  .writer-v925-grid .writer-v1205-resize-handle{display:none;}
 }
 body.is-mobile .writer-v8-home .writer-v8-home-grid.writer-v925-grid{
- grid-template-columns:minmax(0,1fr);
+ grid-template-columns:repeat(var(--writer-home-grid-columns,12),minmax(0,1fr));
 }
 body.is-mobile .writer-v8-home .writer-v925-grid>[data-section]{
  grid-column:1/-1;width:100%;max-width:100%;
@@ -10556,18 +10502,18 @@ body.is-mobile :where(.writer-v11-studio-modal,.writer-v102-spaces-modal,
 }
 
 /* The actual homepage width, not monitor width, controls widget layout. */
-.writer-v8-home{container-name:basic-home;container-type:inline-size;}
+.writer-v8-home{container-name:basic-home;container-type:inline-size;--writer-home-grid-columns:12;}
 .writer-v8-home .writer-v8-home-grid.writer-v925-grid{
  box-sizing:border-box;width:100%;max-width:1100px;
- display:grid;grid-template-columns:repeat(12,minmax(0,1fr));
+ display:grid;grid-template-columns:repeat(var(--writer-home-grid-columns),minmax(0,1fr));
  grid-auto-flow:row dense;gap:8px;min-width:0;
 }
 .writer-v8-home .writer-v925-grid>[data-section]{
  box-sizing:border-box;min-width:0;max-width:100%;
  overflow-wrap:break-word;word-break:normal;
 }
-.writer-v8-home .writer-v925-grid>[data-section] :is(h3,h4,p,button,small,strong,span){
- overflow-wrap:break-word;word-break:normal;
+.writer-v8-home .writer-v925-grid>[data-section] :is(.writer-v8-home-card-header,.writer-v903-widget-heading) :is(h3,h4,strong){
+ min-width:0;overflow-wrap:break-word;word-break:normal;
 }
 .writer-v8-home .writer-v925-grid>.writer-v1205-resize-card .writer-v1205-resize-handle{
  pointer-events:none;opacity:0;
@@ -10851,7 +10797,7 @@ body.is-mobile :where(.writer-v11-studio-modal,.writer-v102-spaces-modal,
  white-space:nowrap;word-break:normal;overflow-wrap:normal;
 }
 .writer-project-root .writer-project-panel .writer-v7-scene-title-wrap .writer-project-scene-title-text{
- display:block;min-width:0;white-space:nowrap;word-break:normal;overflow-wrap:normal;hyphens:none;
+ display:block;white-space:nowrap;overflow-wrap:normal;hyphens:none;
 }
 @container basic-project (max-width:220px){
  .writer-project-root .writer-project-panel .writer-project-scene-controls>button:not(.writer-project-scene-more){display:none;}
@@ -10860,12 +10806,7 @@ body.is-mobile :where(.writer-v11-studio-modal,.writer-v102-spaces-modal,
  .writer-project-root .writer-project-nav-groups>button{padding-inline:3px;}
  .writer-project-root .writer-project-nav-label{display:none;}
 }
-/* Prism-inspired compact floating bar, restricted to hosts with Basic items. */
-body:not(.is-mobile) .status-bar.writer-v132-status-host{left:50%;right:auto;bottom:4px;transform:translateX(-50%);max-width:calc(100vw - 128px);
- padding:2px 5px;gap:3px;
- border-radius:var(--radius-s,5px);
- box-shadow:var(--shadow-s);
-}
+/* Desktop status geometry is owned by v13-6-projects.css. */
 /* Four writing formats, using Obsidian's theme tokens without replacing theme CSS. */
 .writer-v131-story-block{
  box-sizing:border-box;min-width:0;max-width:100%;margin:12px 0;padding:12px;
@@ -10997,7 +10938,7 @@ body:not(.is-mobile) .status-bar.writer-v132-status-host{left:50%;right:auto;bot
 }
 .writer-project-root .writer-project-panel .writer-v7-scene-title-wrap .writer-project-scene-title-text{
  display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;
- white-space:normal;overflow:hidden;text-overflow:ellipsis;overflow-wrap:break-word;
+ min-width:0;max-width:100%;white-space:normal;overflow:hidden;text-overflow:ellipsis;overflow-wrap:break-word;word-break:normal;
  line-height:1.4;
 }
 .writer-project-root .writer-project-scene-title .writer-project-scene-title-text{flex:1 1 auto}
@@ -11055,7 +10996,7 @@ body.is-mobile .writer-project-root .writer-project-panel .writer-project-scene.
 body.is-mobile .writer-project-root .writer-project-panel .writer-project-scene-controls>.writer-project-scene-more{min-width:44px;width:44px;min-height:44px}
 @container basic-project (max-width:540px){
  .writer-project-root .writer-project-nav-groups{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,96px),1fr))}
- .writer-project-root .writer-project-panel .writer-project-scene.writer-project-scene-actions{grid-template-columns:28px minmax(0,1fr);gap:3px 6px}
+ .writer-project-root .writer-project-panel .writer-project-scene.writer-project-scene-actions{grid-template-columns:28px minmax(0,1fr) max-content;gap:3px 6px}
  body.is-mobile .writer-project-root .writer-project-panel .writer-project-scene.writer-project-scene-actions{grid-template-columns:44px minmax(0,1fr) 44px}
  .writer-project-root .writer-project-panel .writer-project-scene.writer-project-scene-actions>.writer-project-drag-handle{grid-column:1;grid-row:1;width:28px;min-width:28px}
  .writer-project-root .writer-project-panel .writer-project-scene.writer-project-scene-actions>.writer-v7-scene-title-wrap{grid-column:2;grid-row:1;align-items:start}
@@ -11088,9 +11029,6 @@ body.is-mobile .writer-project-root .writer-project-panel .writer-v7-scene-title
 @media(max-width:850px){
  .status-bar.writer-v132-status-host .writer-v91-sound-status input[type="range"]{display:none}
  .status-bar.writer-v132-status-host .writer-v1010-width-status input[type="range"]{display:none}
-}
-@media(max-width:640px){
- body:not(.is-mobile) .status-bar.writer-v132-status-host{max-width:calc(100vw - 24px);flex-wrap:wrap;justify-content:center;row-gap:2px}
 }
 
 /* Desktop Longform: compact single-line scenes, including narrow sidebars.
@@ -12140,8 +12078,8 @@ body.writer-v4-typewriter-focus .cm-editor.writer-v4-typewriter-engaged .cm-line
  min-width:0;max-width:100%;min-height:36px;height:auto;white-space:normal;overflow-wrap:anywhere;
  line-height:1.4;padding:6px 10px;
 }
-.dictionary-view-content.writer-tool-root .writer-lt-result-actions{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;margin-top:10px}
-.dictionary-view-content.writer-tool-root .writer-lt-result-actions>button{min-height:34px;white-space:normal;line-height:1.35}
+.dictionary-view-content.writer-tool-root .writer-lt-result-actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,120px),1fr));gap:6px;margin-top:10px}
+.dictionary-view-content.writer-tool-root .writer-lt-result-actions>button{min-width:0;max-width:100%;min-height:34px;height:auto;white-space:normal;overflow-wrap:anywhere;line-height:1.35}
 .dictionary-view-content.writer-tool-root .writer-lt-details{margin-top:10px;padding-top:8px;border-top:1px solid var(--background-modifier-border)}
 .dictionary-view-content.writer-tool-root .writer-lt-details>summary{font-size:var(--font-ui-small);line-height:1.4;cursor:var(--cursor)}
 .dictionary-view-content.writer-tool-root .writer-lt-details p{font-size:var(--font-ui-small);line-height:1.55;overflow-wrap:anywhere}
@@ -12181,7 +12119,7 @@ body.is-mobile .dictionary-view-content.writer-tool-root .writer-lt-choices>.wri
  flex:1 1 auto;min-width:0;min-height:40px;padding:7px 9px;
 }
 body.is-mobile .dictionary-view-content.writer-tool-root .writer-lt-result-actions{
- display:grid;grid-template-columns:minmax(0,1fr) auto;gap:5px;margin-top:3px;
+ display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,120px),1fr));gap:5px;margin-top:3px;
 }
 body.is-mobile .dictionary-view-content.writer-tool-root .writer-lt-result-actions>button{
  min-height:40px;padding:5px 10px;
@@ -12536,6 +12474,12 @@ body.is-mobile .writer-mobile-status:not([hidden]){
 body.is-mobile .writer-mobile-status.writer-mobile-status-floating{
  position:fixed;inset:auto;top:var(--writer-mobile-status-top);left:var(--writer-mobile-status-left);
  width:var(--writer-mobile-status-width);z-index:var(--layer-status-bar,10);
+}
+/* Only Markdown scroll surfaces measured by the mobile layout adapter. Preserve
+ * larger native padding, and remove the entire override when there is no overlap. */
+body.is-mobile :is(.markdown-preview-view,.cm-scroller).writer-mobile-note-scroll-clearance{
+ padding-bottom:max(var(--writer-mobile-note-base-padding,0px),var(--writer-mobile-note-clearance,0px));
+ scroll-padding-bottom:max(var(--writer-mobile-note-base-scroll-padding,0px),var(--writer-mobile-note-clearance,0px));
 }
 body.is-mobile .writer-v8-home{
  padding-block-end:calc(var(--writer-home-footer-padding,30px) + var(--writer-mobile-home-clearance,0px));

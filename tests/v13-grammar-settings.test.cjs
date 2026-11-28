@@ -35,7 +35,7 @@ function runtime(initial={},language='en'){
   addTextArea(register){return this.control('textarea',register);}
   addButton(register){return this.control('button',register);}
  }
- const source=fs.readFileSync('src/v4/auto-grammar.js','utf8')+'\n'+fs.readFileSync('src/v13/grammar-settings.js','utf8');
+ const source=fs.readFileSync('src/writing/auto-grammar.js','utf8')+'\n'+fs.readFileSync('src/settings/grammar-settings.js','utf8');
  const api=vm.runInNewContext(source+'\n({writerAutoGrammarSettings,writerGrammarEndpoint,writerGrammarRequest,writerGrammarCancel,WriterAutoGrammar,writerV137GrammarSettings,writerV137GrammarWords,writerV137GrammarRules})',{
   Setting,URL,URLSearchParams,VIEW:'offline-dictionary-view',Date,console,
   writerUi:(pt,en)=>language==='pt'?pt:en,
@@ -51,7 +51,7 @@ function runtime(initial={},language='en'){
   checkGrammar:text=>api.writerGrammarRequest(plugin,text)};
  const panel=new Element();
  const control=(name,type,text)=>{
-  const row=rows.find(row=>row.name===name);assert.ok(row,'Missing setting '+name);
+  const row=rows.findLast(row=>row.name===name);assert.ok(row,'Missing setting '+name);
   const item=row.controls.find(item=>item.type===type&&(!text||item.text===text));assert.ok(item,'Missing '+type+' for '+name);return item;
  };
  return {api,settings,plugin,panel,rows,saves,requests,timers,control,
@@ -126,6 +126,52 @@ test('a failed connection save restores the previous settings and allows retryin
  assert.equal(h.settings.reviewUsername,'old-user');assert.equal(save.disabled,false);
  h.plugin.saveSettings=originalSave;await save.click();
  assert.equal(h.settings.reviewUsername,'new-user');assert.equal(h.saves.length,1);assert.equal(save.disabled,true);
+});
+
+test('a settings rerender waits for the outstanding connection write and reads the settled values',async()=>{
+ for(const succeeds of [true,false]){
+  const h=runtime({reviewUsername:'old-user'}),firstRoot=h.render(),held=deferred();
+  const originalSave=h.plugin.saveSettings;let writes=0;
+  h.plugin.saveSettings=()=>{writes++;return held.promise;};
+  await h.control('LanguageTool account (optional)','text').change('first-user');
+  const firstSave=h.control('Save connection','button','Save'),pending=firstSave.click();
+  firstRoot.isConnected=false;
+  h.render();
+  const username=h.control('LanguageTool account (optional)','text');
+  const save=h.control('Save connection','button','Save');
+  const check=h.control('Test connection','button');
+  assert.equal(username.value,'old-user');assert.equal(username.disabled,true);assert.equal(check.disabled,true);
+  await username.change('second-user');await save.click();await check.click();
+  assert.equal(writes,1);assert.equal(h.requests.length,0);
+  if(succeeds)held.resolve();else held.reject(Error('No space'));
+  await pending;
+  assert.equal(username.value,succeeds?'first-user':'old-user');
+  assert.equal(username.disabled,false);assert.equal(save.disabled,true);assert.equal(check.disabled,false);
+  await firstSave.click();assert.equal(writes,1,'The detached settings controls cannot save');
+  h.plugin.saveSettings=originalSave;
+  await username.change('second-user');await save.click();
+  assert.equal(h.saves.at(-1).reviewUsername,'second-user');
+ }
+});
+
+test('connection rollback preserves newer values and returns missing fields to their previous shape',async()=>{
+ const h=runtime({reviewUsername:'old-user'}),held=deferred();h.render();
+ const originalSave=h.plugin.saveSettings;
+ h.plugin.saveSettings=()=>held.promise;
+ await h.control('LanguageTool account (optional)','text').change('draft-user');
+ await h.control('API key (optional)','text').change('draft-key');
+ const save=h.control('Save connection','button','Save'),pending=save.click();
+ h.settings.reviewUsername='newer-user';
+ h.settings.reviewEndpoint='https://new.example.org/v2/check';
+ held.reject(Error('No space'));await pending;
+ assert.equal(h.settings.reviewUsername,'newer-user');
+ assert.equal(h.settings.reviewEndpoint,'https://new.example.org/v2/check');
+ assert.equal(Object.hasOwn(h.settings,'reviewApiKey'),false);
+ assert.equal(h.control('Server endpoint','text').value,'https://new.example.org/v2/check');
+ h.plugin.saveSettings=originalSave;await save.click();
+ assert.equal(h.saves.at(-1).reviewEndpoint,'https://new.example.org/v2/check');
+ assert.equal(h.saves.at(-1).reviewUsername,'draft-user');
+ assert.equal(h.saves.at(-1).reviewApiKey,'draft-key');
 });
 
 test('grammar requests send configured language and optional account fields without changing preferences',async()=>{

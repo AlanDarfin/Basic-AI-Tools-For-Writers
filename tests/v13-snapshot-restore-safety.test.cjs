@@ -4,9 +4,9 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
 class TFile{constructor(path){this.path=path;this.extension='md';}}
-const core=fs.readFileSync('src/v3/core.js','utf8');
+const core=fs.readFileSync('src/core/core.js','utf8');
 const helpers=core.slice(core.indexOf('function writerActiveEditor('),core.indexOf('function writerOffsetToPos('));
-const source=fs.readFileSync('src/v3/snapshots.js','utf8');
+const source=fs.readFileSync('src/persistence/snapshots.js','utf8');
 const {WriterSnapshots}=vm.runInNewContext(helpers+'\n'+source+'\n({WriterSnapshots})',{
  TFile,writerUi:(_pt,en)=>en,console
 });

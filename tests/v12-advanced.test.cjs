@@ -7,7 +7,7 @@ const vm=require('node:vm');
 const {webcrypto}=require('node:crypto');
 const root=path.join(__dirname,'..');
 function evaluate(filename,globals,exports){
- const source=fs.readFileSync(path.join(root,'src/v12',filename),'utf8');
+ const source=fs.readFileSync(path.join(root,require('../scripts/js-manifest.js').resolveSourcePath('src/v12/'+filename)),'utf8');
  const ctx={console,crypto:webcrypto,TextEncoder,TextDecoder,btoa,atob,
   writerUi:(pt,en)=>en,writerV12On:()=>true,...globals};
  vm.runInNewContext(source+'\nglobalThis.testApi={'+exports.join(',')+'};',ctx,{filename});

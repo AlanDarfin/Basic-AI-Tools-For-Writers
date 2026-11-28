@@ -1,7 +1,7 @@
 'use strict';
 const {test}=require('node:test'),assert=require('node:assert/strict');
 const fs=require('node:fs'),vm=require('node:vm');
-const source=fs.readFileSync('src/v11/database-workflow.js','utf8');
+const source=fs.readFileSync('src/workspace/database-workflow.js','utf8');
 const load=(names,extra={})=>vm.runInNewContext(source+'\n({'+names.join(',')+'})',
  {writerUi:(pt,en)=>pt,Number,String,Array,Set,Object,...extra});
 test('v11 safely parses typed properties and forbids prototype or file keys',()=>{
@@ -46,7 +46,7 @@ test('database board movements retain the active view and query and refresh the 
   empty(){this.children=[];}
   descendants(){return this.children.flatMap(node=>[node,...node.descendants()]);}
  }
- const render=vm.runInNewContext(['src/v10/data-tables.js','src/v10/suite-notion-1011.js'].map(p=>fs.readFileSync(p,'utf8')).join('\n')+
+ const render=vm.runInNewContext(['src/blocks/data-tables.js','src/integrations/suite-notion-1011.js'].map(p=>fs.readFileSync(p,'utf8')).join('\n')+
   '\n'+source+'\nwriterV1011NotionRender',{writerUi:(_pt,en)=>en,Notice:class{constructor(message){assert.fail(message);}}});
  const files=['Alpha','Atlas','Amber'].map(basename=>({basename,path:'Deck/'+basename+'.md'}));
  const props=new Map([[files[0],{status:'Draft'}],[files[1],{status:'Done'}],[files[2],{}]]);

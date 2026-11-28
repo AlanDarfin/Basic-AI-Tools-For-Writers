@@ -19,7 +19,7 @@ class Setting{
  addButton(fn){const b={setButtonText(){return this;},onClick(fn){this.click=fn;return this;}};this.button=b;fn(b);return this;}
 }
 const ctx={TFile,Setting,lfMsg:(pt)=>pt,Notice:class{},console};
-const source=fs.readFileSync('src/v5/project-metadata.js','utf8');
+const source=fs.readFileSync('src/projects/project-metadata.js','utf8');
 const projectApi=vm.runInNewContext(source+'\n({writerProjectCoverFiles,writerProjectValidCover,writerProjectNormalizeDescription,writerProjectLicenseInfo,writerProjectRemember,writerProjectRenamedPath,writerProjectMetaRender,WRITER_PROJECT_LICENSES})',ctx);
 let passed=0;
 async function test(name,fn){await fn();passed++;console.log('PASS',name);}
@@ -90,12 +90,12 @@ async function test(name,fn){await fn();passed++;console.log('PASS',name);}
  });
  await test('source bundle, translations, responsive CSS and stable meta exist',()=>{
   const main=fs.readFileSync('main.js','utf8');
-  const build=fs.readFileSync('scripts/build-v3.js','utf8');
+  const {sourceIds}=require('../scripts/js-manifest.js');
   const css=fs.readFileSync('styles.css','utf8');
   assert.ok(main.includes('writerProjectMetaRender(this,panel,project)'));
   assert.ok(main.includes('writerProjectRemember(this,selector.value)'));
   assert.ok(main.includes('// v3 module: src/v5/project-metadata.js'));
-  assert.ok(build.includes("'v5/project-metadata'"));
+  assert.ok(sourceIds.includes('src/v5/project-metadata.js'));
   assert.ok(css.includes('.writer-project-cover-preview img'));
   assert.ok(css.includes('.dictionary-settings-subtabs'));
   assert.ok(fs.readFileSync('README.md','utf8').includes('Book writing'));

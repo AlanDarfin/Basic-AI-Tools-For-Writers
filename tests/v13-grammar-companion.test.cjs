@@ -23,7 +23,7 @@ function runtime(lang='en'){
   addToggle(callback){return this.control(callback);}
   addDropdown(callback){return this.control(callback);}
  }
- const api=vm.runInNewContext(fs.readFileSync('src/v13/grammar-companion.js','utf8')+
+ const api=vm.runInNewContext(fs.readFileSync('src/integrations/grammar-companion.js','utf8')+
   '\n({WRITER_COMPANION_GRAMMAR,writerLanguageToolState,writerLanguageToolEnabled,writerLanguageToolCommand,writerLanguageToolReview,writerLanguageToolUpdate,writerLanguageToolSettings,writerLanguageToolPanel,writerLanguageToolRegister})',{
   Setting,Notice:class{constructor(message){notices.push(message);}},writerUi:(pt,en)=>lang==='pt'?pt:en,
   writerModuleOn:plugin=>plugin.settings.visibleModules.review!==false,document,
@@ -235,17 +235,17 @@ test('runtime capability refresh waits for an active review and cancels its Basi
 });
 
 test('mobile tooltip styling and correction scroll guard use only the enabled bridge scope',()=>{
- const css=fs.readFileSync('src/styles/v13-8-grammar-compat.css','utf8');
+ const css=fs.readFileSync('src/styles/compat/v13-8-grammar-compat.css','utf8');
  assert.match(css,/\.is-mobile\.writer-grammar-external-compat/);assert.match(css,/min-height:44px/);
  assert.match(css,/max-width:calc\(100vw - 40px\)/);
- assert.match(fs.readFileSync('src/v4/integrations.js','utf8'),/\.writer-grammar-external-compat \.lt-tooltip/);
+ assert.match(fs.readFileSync('src/integrations/integrations.js','utf8'),/\.writer-grammar-external-compat \.lt-tooltip/);
 });
 
 test('diagnostics report the selected external engine and redact its server credentials and URL parameters',()=>{
  const h=runtime();h.plugin.settings.reviewEndpoint='https://unused-basic.example/check';
  h.instance.settings.options.serverUrl='https://account:PRIVATE@external.example/v2?key=PRIVATE';
  h.plugin.app.vault.getMarkdownFiles=()=>[];
- const diagnostics=vm.runInNewContext(fs.readFileSync('src/v4/modules.js','utf8')+'\nwriterDiagnostics',{
+ const diagnostics=vm.runInNewContext(fs.readFileSync('src/settings/modules.js','utf8')+'\nwriterDiagnostics',{
   URL,writerUi:(_pt,en)=>en,writerLanguageToolState:h.api.writerLanguageToolState,
   writerLanguageToolInstalled:plugin=>plugin.app.plugins.plugins.languagetool
  })(h.plugin);

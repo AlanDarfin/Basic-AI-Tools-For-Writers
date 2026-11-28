@@ -3,7 +3,7 @@ const fs=require('node:fs');
 const vm=require('node:vm');
 const assert=require('node:assert/strict');
 const {webcrypto}=require('node:crypto');
-const file=fs.readFileSync('src/v3/tts-online.js','utf8');
+const file=fs.readFileSync('src/integrations/tts-online.js','utf8');
 let sendCalls=[];
 class MockWebSocket{
  static CONNECTING=0;static OPEN=1;

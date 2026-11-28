@@ -1,7 +1,7 @@
 'use strict';
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
-const source=fs.readFileSync('src/v8/format-blocks.js','utf8');
-const css=fs.readFileSync('src/styles/v13-foundation.css','utf8');
+const source=fs.readFileSync('src/blocks/format-blocks.js','utf8');
+const css=fs.readFileSync('src/styles/core/v13-foundation.css','utf8');
 const projects=fs.readFileSync('projects.js','utf8');
 class Element{
  constructor(tag='div',options={}){this.tag=tag;this.cls=options.cls||'';this.text=options.text||'';this.attr=options.attr||{};this.children=[];this.listeners={};}
@@ -76,5 +76,12 @@ test('project selectors target the nested title and full labels remain accessibl
  assert.match(css,/>\.writer-v7-scene-title-wrap\{[\s\S]*?grid-column:2/);
  assert.match(css,/\.writer-v7-scene-title-wrap \.writer-project-scene-title-text\{[\s\S]*?text-overflow:ellipsis/);
  assert.match(css,/@container basic-project \(max-width:175px\)/);
- assert.match(css,/\.status-bar\.writer-v132-status-host\{[\s\S]*?max-width:calc\(100vw - 128px\)/);
+ const dock=fs.readFileSync('src/styles/features/v13-6-projects.css','utf8');
+ const desktop=dock.match(/body:not\(\.is-mobile\) \.status-bar\.writer-v132-status-host\{([^}]+)\}/);
+ assert.ok(desktop,'Desktop status has an explicit owner');
+ assert.match(desktop[1],/position:fixed/);
+ assert.match(desktop[1],/bottom:0/);
+ assert.match(desktop[1],/transform:none/);
+ assert.match(desktop[1],/max-width:calc\(100vw - 268px\)/);
+ assert.doesNotMatch(css,/body:not\(\.is-mobile\) \.status-bar\.writer-v132-status-host\{/);
 });

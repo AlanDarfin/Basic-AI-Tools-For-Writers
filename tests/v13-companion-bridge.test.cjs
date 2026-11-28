@@ -3,7 +3,8 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
-const sources=['companion-toolkit.js','companion-notes.js','companion-sync.js','grammar-companion.js','companion-bridge.js'].map(name=>fs.readFileSync('src/v13/'+name,'utf8')).join('\n');
+const {resolveSourcePath}=require('../scripts/js-manifest.js');
+const sources=['companion-toolkit.js','companion-notes.js','companion-sync.js','grammar-companion.js','companion-bridge.js'].map(name=>fs.readFileSync(resolveSourcePath('src/v13/'+name),'utf8')).join('\n');
 const plain=value=>JSON.parse(JSON.stringify(value));
 function deferred(){let resolve;const promise=new Promise(ok=>{resolve=ok;});return {promise,resolve};}
 class Element{

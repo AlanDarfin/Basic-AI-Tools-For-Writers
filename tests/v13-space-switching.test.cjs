@@ -3,7 +3,7 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
-const source=fs.readFileSync('src/v9/smart-spaces.js','utf8');
+const source=fs.readFileSync('src/workspace/smart-spaces.js','utf8');
 class Element{
  constructor(tag='div',options={}){
   this.tag=tag;this.children=[];this.events={};this.text=options.text||'';
@@ -165,6 +165,44 @@ test('the Spaces sidebar reflects Entire vault and lists unfiltered notes instea
  assert.equal(state.plugin.settings.v9Spaces.activeId,'');
  assert.equal(tabs(root)[0].attributes['aria-pressed'],'true');
  assert.equal(root.all(element=>element.cls==='writer-v9-space-side-item').length,3);
+});
+test('Space selection refreshes the sidebar once and clears its search on reselection',async()=>{
+ const state=setup();
+ const {root,view}=sidebar(state);
+ const render=view.render.bind(view);
+ let renders=0;
+ view.render=()=>{renders++;render();};
+ render();
+ const chooseWriting=()=>tabs(root).find(element=>element.attributes.title==='Writing').events.click();
+ const search=()=>root.find(element=>element.tag==='input');
+ chooseWriting();
+ await state.plugin._writerV133SpaceSwitch;await flush();
+ assert.equal(renders,1);
+ assert.deepEqual(state.actions,['save a','restore A saved layout']);
+
+ search().value='missing';search().events.input();
+ assert.equal(root.all(element=>element.cls==='writer-v9-space-side-item').length,0);
+ chooseWriting();
+ await state.plugin._writerV133SpaceSwitch;await flush();
+ assert.equal(renders,2);
+ assert.equal(search().value,'');
+ assert.equal(root.all(element=>element.cls==='writer-v9-space-side-item').length,1);
+ assert.deepEqual(state.actions,['save a','restore A saved layout']);
+});
+test('failed sidebar selection restores the prior state with one refresh and one notice',async()=>{
+ const state=setup(),{root,view}=sidebar(state);
+ const render=view.render.bind(view);
+ let renders=0;
+ view.render=()=>{renders++;render();};
+ state.plugin.saveSettings=async()=>{throw Error('disk unavailable');};
+ const initialNotices=notices.length;
+ render();
+ tabs(root).find(element=>element.attributes.title==='Writing').events.click();
+ await state.plugin._writerV133SpaceSwitch;await flush();
+ assert.equal(state.plugin.settings.v9Spaces.activeId,'origin');
+ assert.equal(renders,1);
+ assert.equal(notices.length,initialNotices+1);
+ assert.match(notices.at(-1),/disk unavailable/);
 });
 test('opening a new Spaces sidebar never changes an Entire vault selection',async()=>{
  const state=setup();state.plugin.settings.v9Spaces.activeId='';

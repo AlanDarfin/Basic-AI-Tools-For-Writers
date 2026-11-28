@@ -4,9 +4,9 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
 const read=file=>fs.readFileSync(file,'utf8');
-const home=read('src/v8/writing-home.js');
-const finish=read('src/v8/finish-blocks.js');
-const css=read('src/styles/v9-2-6-dashboard.css');
+const home=read('src/workspace/writing-home.js');
+const finish=read('src/blocks/finish-blocks.js');
+const css=read('src/styles/features/v9-2-6-dashboard.css');
 
 test('dashboard is bundled from its actual module and packs short cards',()=>{
  const main=read('main.js');
@@ -19,7 +19,7 @@ test('dashboard is bundled from its actual module and packs short cards',()=>{
  assert.match(css,/grid-auto-rows:8px/);
  assert.match(css,/data-widget-size="wide"/);
  assert.match(css,/body\.is-mobile/);
- assert.ok(read('scripts/build-css.js').includes('v9-2-6-dashboard.css'));
+ assert.ok(read('scripts/css-manifest.js').includes('v9-2-6-dashboard.css'));
 });
 
 test('widget size preferences migrate and discard malformed values',()=>{

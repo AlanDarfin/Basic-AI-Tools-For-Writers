@@ -538,7 +538,7 @@ class ProjectsView extends ItemView{
     }).open();
   }catch(error){new Notice(error.message);}
  }
- async updateIndex(project,change){
+ async writeIndex(project,change){
   const path=project.file.path;
   await this.backupIndex(project);
   // Use Obsidian's safe frontmatter API. Its YAML serializer can normalize formatting
@@ -548,19 +548,45 @@ class ProjectsView extends ItemView{
    if(!fm.longform||typeof fm.longform!=='object')fm.longform={};
    change(fm.longform);
   });
+ }
+ async updateIndex(project,change){
+  await this.writeIndex(project,change);
   await this.render();
  }
  sceneList(project){return lfFlattenScenes(project.scenes);}
  activeScenes(project,draft=this.draft){return draft==='Principal'?this.sceneList(project):(this.prefs(project).drafts?.[draft]||this.sceneList(project));}
  async changeScenes(project,change){
-  if(this.draft==='Principal')return this.updateIndex(project,data=>{
-   const flat=lfFlattenScenes(data.scenes||[]);
-   change(flat);
-   data.scenes=lfNestScenes(flat);
-  });
-  const prefs=this.prefs(project);
-  if(!prefs.drafts[this.draft])prefs.drafts[this.draft]=this.sceneList(project);
-  change(prefs.drafts[this.draft]);await this.savePrefs();
+  const draft=this.draft;
+  const dividers=typeof writerV13ArcStore==='function'?writerV13ArcStore(this,project,draft):[];
+  let planned=[];
+  const changeWithAnchors=scenes=>{
+   if(dividers.length)planned=writerV13ArcPlanSceneChange(dividers,scenes,change);
+   else change(scenes);
+  };
+  if(draft==='Principal'){
+   await this.writeIndex(project,data=>{
+    const flat=lfFlattenScenes(data.scenes||[]);
+    changeWithAnchors(flat);
+    data.scenes=lfNestScenes(flat);
+   });
+  }else{
+   const prefs=this.prefs(project);
+   if(!prefs.drafts[draft])prefs.drafts[draft]=this.sceneList(project);
+   changeWithAnchors(prefs.drafts[draft]);
+  }
+  let anchorsChanged=false;
+  // Index writes can finish after a divider has been moved or removed.
+  for(const {divider,previous,target} of planned){
+   if(divider.before!==previous||!dividers.includes(divider))continue;
+   divider.before=target;
+   anchorsChanged=true;
+  }
+  if(draft!=='Principal')return this.savePrefs();
+  try{
+   if(anchorsChanged)await this.plugin.saveSettings();
+  }finally{
+   await this.render();
+  }
  }
 
  sceneIndex(scenes,title){return scenes.findIndex(x=>x.title===title);}
@@ -727,6 +753,10 @@ class ProjectsView extends ItemView{
   const toolbar=panel.createDiv({cls:'writer-project-notes-toolbar writer-project-scene-actions-bar',
    attr:{role:'toolbar','aria-label':lfMsg('Ações de cenas','Scene actions')}});
   lfIconButton(toolbar,'file-plus',lfMsg('Adicionar cena','Add scene')).addEventListener('click',()=>this.addScene(project));
+  if(typeof writerV13ArcPrompt==='function'){
+   lfIconButton(toolbar,'separator-horizontal',lfMsg('Adicionar separador de arco','Add story arc divider'),'writer-project-arc-create')
+    .addEventListener('click',()=>writerV13ArcPrompt(this,project));
+  }
   lfIconButton(toolbar,'search',lfMsg('Buscar cena','Find scene')).addEventListener('click',()=>this.openSceneSearch(project));
   lfIconButton(toolbar,'notebook-pen',lfMsg('Novo rascunho Longform','New Longform draft')).addEventListener('click',()=>this.createLinkedDraft(project));
   addReviewButton(toolbar);
@@ -882,9 +912,11 @@ class ProjectsView extends ItemView{
     menu.showAtMouseEvent(event);
    });
    if(prefs.v7CollapsedScenes?.[name]!==true)for(const child of item.children)renderItem(child,parent,level+1);
+   return row;
   };
-  for(const item of tree)renderItem(item,panel);
+  const rootRows=tree.map(item=>renderItem(item,panel));
   if(!scenes.length)panel.createEl('p',{text:lfMsg('Nenhuma cena cadastrada. Use o botão Adicionar cena.','No scenes yet. Use the Add scene button.')});
+  if(typeof writerV13ArcRender==='function')writerV13ArcRender(this,panel,project,rootRows);
  }
  async createLinkedDraft(project){
   new TextPrompt(this.app,lfMsg('Nome do novo rascunho Longform','New Longform draft name'),async raw=>{
@@ -8037,8 +8069,13 @@ function writerProjectMetaRender(view,panel,project){
   .addDropdown(d=>{
    d.addOption('',lfMsg('Sem capa','No cover'));
    const files=writerProjectCoverFiles(view.app);
-   for(const image of files)d.addOption(image.path,image.path);
-   if(current&&!files.some(image=>image.path===current))d.addOption(current,lfMsg('Arquivo ausente: ','Missing file: ')+current);
+   let currentFound=false;
+   for(const image of files){
+    const path=image.path;
+    if(path===current)currentFound=true;
+    d.addOption(path,path);
+   }
+   if(current&&!currentFound)d.addOption(current,lfMsg('Arquivo ausente: ','Missing file: ')+current);
    d.setValue(current).onChange(async path=>{
     if(path&&!writerProjectValidCover(view.app,path)){new Notice(lfMsg('Selecione uma imagem válida do cofre.','Choose a valid vault image.'));return;}
     project.meta.cover=path;
@@ -8780,7 +8817,7 @@ function writerBookNavMerge(settings){
  settings.bookNavigation={...WRITER_BOOKNAV_DEFAULTS,...(old&&typeof old==='object'&&!Array.isArray(old)?old:{})};
  return settings.bookNavigation;
 }
-function writerBookNavFindSceneFile(index,entry,app){
+function writerBookNavFindSceneFile(index,entry,app,getMarkdownFiles=()=>app.vault.getMarkdownFiles()){
  const parent=index.file.parent?.path||'';
  const folder=String(index.meta?.sceneFolder||'/').replace(/^\/+|\/+$/g,'');
  const title=String(entry?.title||'').trim();
@@ -8802,7 +8839,7 @@ function writerBookNavFindSceneFile(index,entry,app){
  // only, and only when the basename is unambiguous, never across other books.
  const projectRoot=parent?parent+'/':'';
  const basename=title.replace(/\.md$/i,'').split('/').pop();
- const matches=app.vault.getMarkdownFiles().filter(file=>
+ const matches=getMarkdownFiles().filter(file=>
   (file.path.startsWith(projectRoot)||!parent)&&file.basename===basename&&
   app.vault.getAbstractFileByPath(file.path) instanceof TFile
  );
@@ -8811,8 +8848,10 @@ function writerBookNavFindSceneFile(index,entry,app){
 function writerBookNavFlatten(index,app){
  if(!index||index.format!=='scenes')return [];
  const entries=lfFlattenScenes(index.scenes),out=[];
+ let markdownFiles;
+ const getMarkdownFiles=()=>markdownFiles??=app.vault.getMarkdownFiles();
  for(let i=0;i<entries.length;i++){
-  const file=writerBookNavFindSceneFile(index,entries[i],app);
+  const file=writerBookNavFindSceneFile(index,entries[i],app,getMarkdownFiles);
   const level=Math.max(0,Math.floor(Number(entries[i].indent)||0));
   // Entries lacking a valid note still determine hierarchy and placement but
   // should never produce a navigation button to an invented or missing file.
@@ -9519,8 +9558,7 @@ function writerV7TagList(raw){
  const values=Array.isArray(raw)?raw:typeof raw==='string'?raw.split(/[\s,]+/):[];
  return [...new Set(values.map(writerV7Tag).filter(Boolean))];
 }
-function writerV7NoteTags(app,file){
- const cache=app.metadataCache?.getFileCache?.(file);
+function writerV7NoteTags(app,file,cache=app.metadataCache?.getFileCache?.(file)){
  const tags=writerV7TagList(cache?.frontmatter?.tags);
  for(const entry of cache?.tags||[]){
   const tag=writerV7Tag(entry?.tag);
@@ -9541,12 +9579,12 @@ function writerV7FolderNote(app,folder){
  }
  return null;
 }
-function writerV7InheritedTags(app,file){
- const tags=new Set(writerV7NoteTags(app,file));
+function writerV7InheritedTags(app,file,noteTags=note=>writerV7NoteTags(app,note),folderNoteFor=folder=>writerV7FolderNote(app,folder)){
+ const tags=new Set(noteTags(file));
  let folder=file.parent,steps=0;
  while(folder instanceof TFolder&&steps++<32){
-  const folderNote=writerV7FolderNote(app,folder);
-  if(folderNote&&folderNote.path!==file.path)for(const tag of writerV7NoteTags(app,folderNote))tags.add(tag);
+  const folderNote=folderNoteFor(folder);
+  if(folderNote&&folderNote.path!==file.path)for(const tag of noteTags(folderNote))tags.add(tag);
   folder=folder.parent;
  }
  return [...tags];
@@ -9555,15 +9593,29 @@ function writerV7ProjectNotes(view,project){
  const root=view.notesRoot(project),folder=view.app.vault.getAbstractFileByPath(root);
  if(!(folder instanceof TFolder))return [];
  const out=[],limit=view.plugin.settings.v7?.maxEntries||3000;
+ // Reuse lookups within this synchronous traversal only.
+ const caches=new Map(),tagsByNote=new Map(),folderNotes=new Map();
+ const cacheFor=file=>{
+  if(!caches.has(file))caches.set(file,view.app.metadataCache?.getFileCache?.(file));
+  return caches.get(file);
+ };
+ const noteTags=file=>{
+  if(!tagsByNote.has(file))tagsByNote.set(file,writerV7NoteTags(view.app,file,cacheFor(file)??null));
+  return tagsByNote.get(file);
+ };
+ const folderNoteFor=folder=>{
+  if(!folderNotes.has(folder))folderNotes.set(folder,writerV7FolderNote(view.app,folder));
+  return folderNotes.get(folder);
+ };
  const walk=(node,depth)=>{
   if(depth>30||out.length>=limit)return;
   for(const item of node.children||[]){
    if(out.length>=limit)break;
    if(item instanceof TFolder)walk(item,depth+1);
    else if(item instanceof TFile&&item.extension==='md'){
-    const folderNote=item.parent instanceof TFolder?writerV7FolderNote(view.app,item.parent):null;
+    const folderNote=item.parent instanceof TFolder?folderNoteFor(item.parent):null;
     out.push({file:item,path:item.path,title:item.basename,folder:item.parent?.path||'',folderNote:folderNote?.path===item.path,
-     tags:writerV7InheritedTags(view.app,item),cache:view.app.metadataCache?.getFileCache?.(item)});
+     tags:writerV7InheritedTags(view.app,item,noteTags,folderNoteFor),cache:cacheFor(item)});
    }
   }
  };
@@ -11836,7 +11888,11 @@ function writerV8OverviewSortEntries(entries,cfg){
 }
 function writerV8OverviewEntries(app,root,cfg,query='',collapsed=new Set()){
  if(!(root instanceof TFolder))return [];
- const entries=[],seen=new Set();
+ const entries=[],seen=new Set(),folderNotes=new Map();
+ const folderNoteFor=parent=>{
+  if(!folderNotes.has(parent))folderNotes.set(parent,typeof writerV7FolderNote==='function'?writerV7FolderNote(app,parent):null);
+  return folderNotes.get(parent);
+ };
  const normalized=query.trim().normalize('NFC').toLocaleLowerCase();
  const matches=child=>!normalized||[child.basename||child.name,child.path].some(value=>
   value.normalize('NFC').toLocaleLowerCase().includes(normalized));
@@ -11855,7 +11911,7 @@ function writerV8OverviewEntries(app,root,cfg,query='',collapsed=new Set()){
     if(cfg.subfolders&&depth<cfg.depth&&(normalized||!collapsed.has(child.path)))scan(child,depth+1);
    }else{
     if(!matches(child)||seen.has(child.path))continue;
-    const folderNote=typeof writerV7FolderNote==='function'?writerV7FolderNote(app,child.parent):null;
+    const folderNote=folderNoteFor(child.parent);
     if(folderNote?.path===child.path)continue;
     seen.add(child.path);
     entries.push({...item,depth});
@@ -13155,7 +13211,8 @@ function writerV8HomeSearchURL(plugin,input){
 }
 /* Slash searches are handled only by Obsidian's native Web Viewer.
  * Never fall through to vault matches, Surfing or the external browser. */
-async function writerV8HomeOpenNativeSearch(plugin,input){
+async function writerV8HomeOpenNativeSearch(plugin,input,current=()=>true){
+ if(!current())return null;
  const query=String(input||'').trim();
  if(!query)throw Error(writerUi('Digite um termo após /.','Enter a search term after /.'));
  if(!writerV8HomeWebViewerEnabled(plugin))
@@ -13164,13 +13221,16 @@ async function writerV8HomeOpenNativeSearch(plugin,input){
  const url=writerV8HomeSearchURL(plugin,query);
  const leaf=plugin.app.workspace.getLeaf?.('tab');
  if(!leaf)throw Error(writerUi('Não foi possível abrir uma aba.','Could not open a tab.'));
- await leaf.setViewState({type:'webviewer',state:{url,navigate:true},active:true});
+ try{await leaf.setViewState({type:'webviewer',state:{url,navigate:true},active:true});}
+ catch(error){if(!current())return null;throw error;}
+ if(!current())return null;
  if(leaf.getViewState?.()?.type!=='webviewer')
   throw Error(writerUi('O Visualizador Web não está disponível.','Web Viewer is unavailable.'));
  plugin.app.workspace.setActiveLeaf?.(leaf,{focus:true});
  return 'webviewer';
 }
-async function writerV8HomeOpenURL(plugin,input){
+async function writerV8HomeOpenURL(plugin,input,current=()=>true){
+ if(!current())return null;
  const url=writerV8HomeValidURL(input);
  if(!url)throw Error(writerUi('Use um endereço HTTP ou HTTPS válido.','Enter a valid HTTP or HTTPS address.'));
  const mobile=writerV8HomeIsMobile(plugin);
@@ -13182,20 +13242,24 @@ async function writerV8HomeOpenURL(plugin,input){
    if(leaf){
     try{
      await leaf.setViewState({type:'surfing-view',state:{url},active:true});
+     if(!current())return null;
      if(leaf.getViewState?.()?.type==='surfing-view')return 'surfing';
-    }catch(error){console.warn('[Basic AI] Surfing browser unavailable:',error);}
+    }catch(error){if(!current())return null;console.warn('[Basic AI] Surfing browser unavailable:',error);}
    }
   }
+  if(!current())return null;
   if(writerV8HomeWebViewerEnabled(plugin)){
    const leaf=plugin.app.workspace.getLeaf?.('tab');
    if(leaf){
     try{
      await leaf.setViewState({type:'webviewer',state:{url,navigate:true},active:true});
+     if(!current())return null;
      if(leaf.getViewState?.()?.type==='webviewer')return 'webviewer';
-    }catch(error){console.warn('[Basic AI] Native Web Viewer unavailable:',error);}
+    }catch(error){if(!current())return null;console.warn('[Basic AI] Native Web Viewer unavailable:',error);}
    }
   }
  }
+ if(!current())return null;
  // Surfing is desktop-only; mobile always delegates to the external browser.
  const scope=plugin.app.workspace.containerEl?.ownerDocument?.defaultView || (typeof window!=='undefined'?window:null);
  if(typeof scope?.open==='function'){scope.open(url,mobile?'_system':'_blank');return 'external';}
@@ -13421,7 +13485,12 @@ function writerV83CalValid(input){
 async function writerV83CalEvents(plugin){
  const folder=plugin.app.vault.getAbstractFileByPath(WRITER_V83_CAL_FOLDER);
  if(!(folder instanceof TFolder))return [];
- const files=folder.children.filter(f=>f instanceof TFile&&f.extension==='md').slice(0,900);
+ const files=[];
+ for(const file of folder.children){
+  if(!(file instanceof TFile)||file.extension!=='md')continue;
+  files.push(file);
+  if(files.length===900)break;
+ }
  const events=[];
  for(const file of files){
   try{const e=writerV83CalParse(await plugin.app.vault.cachedRead(file),file.path);if(e)events.push(e);}
@@ -13934,21 +14003,84 @@ function writerV8HomeSearch(files,query,cache,max=12){
   String(file.path||'').toLocaleLowerCase().includes(q)||
   (cache?.getFileCache?.(file)?.headings||[]).some(h=>String(h.heading||'').toLocaleLowerCase().includes(q))).slice(0,max);
 }
-function writerV8HomeTopFiles(plugin,count=12){
+// A lazy snapshot belongs to one synchronous dashboard render, never to search
+// or a later render. Hidden widgets do not trigger a vault enumeration.
+function writerV16HomeMarkdownSnapshot(vault){
+ let files;
+ return ()=>files??=(vault.getMarkdownFiles?.()||[]).slice();
+}
+function writerV8HomeTopFiles(plugin,count=12,getFiles=()=>plugin.app.vault.getMarkdownFiles?.()||[]){
  const recent=plugin.settings.v8Finish?.homeRecent||[];
  const used=new Set();
  const paths=recent.map(path=>plugin.app.vault.getAbstractFileByPath(path))
   .filter(f=>{if(!(f instanceof TFile)||f.extension!=='md'||used.has(f.path))return false;used.add(f.path);return true;});
- const seen=new Set(paths.map(f=>f.path));
- const last=plugin.app.vault.getMarkdownFiles?.().slice().sort((a,b)=>(b.stat?.mtime||0)-(a.stat?.mtime||0))||[];
+ if(paths.length>=count)return paths.slice(0,count);
+ const seen=used;
+ const last=getFiles().slice().sort((a,b)=>(b.stat?.mtime||0)-(a.stat?.mtime||0));
  for(const file of last){if(paths.length>=count)break;if(!seen.has(file.path)){paths.push(file);seen.add(file.path);}}
  return paths.slice(0,count);
 }
-function writerV8HomeStats(plugin){
- const files=plugin.app.vault.getMarkdownFiles?.()||[];
+function writerV8HomeStats(plugin,files=plugin.app.vault.getMarkdownFiles?.()||[]){
  const since=Date.now()-7*86400000;
  return {notes:files.length,recent:files.filter(f=>(f.stat?.mtime||0)>=since).length,
   projects:plugin.app.workspace.getLeavesOfType?.(PROJECT_VIEW)?.length||0};
+}
+// Preserve the existing seven daily windows; read each file timestamp once.
+function writerV16HomeActivityCounts(files,now){
+ const days=[],counts=Array(7).fill(0);
+ for(let i=6;i>=0;i--)days.push(new Date(now.getFullYear(),now.getMonth(),now.getDate()-i));
+ const bounds=days.map(day=>[day.getTime(),day.getTime()+86400000]);
+ for(const file of files){
+  const mtime=file.stat?.mtime||0;
+  for(let i=0;i<bounds.length;i++)if(mtime>=bounds[i][0]&&mtime<bounds[i][1])counts[i]++;
+ }
+ return {days,counts};
+}
+// One pending measurement per render; retained observer callbacks become inert.
+function writerV16HomeFrameQueue(request,cancel,update){
+ let pending=null,disposed=false;
+ return {
+  schedule(){
+   if(disposed||pending)return;
+   const ticket={id:null};pending=ticket;
+   ticket.id=request(()=>{
+    if(disposed||pending!==ticket)return;
+    pending=null;update();
+   });
+  },
+  dispose(){
+   if(disposed)return;
+   disposed=true;
+   const ticket=pending;pending=null;
+   if(ticket?.id!=null)cancel(ticket.id);
+  }
+ };
+}
+// Export the captured draft; never clear a newer edit or navigate from a stale render.
+async function writerV16HomeExportDraft(view,slot,raw,current,selected,editor){
+ const drafts=view.plugin.settings.v8Finish.homeQuick;
+ const body=raw.trim();
+ if(!body)return {file:null,cleared:false};
+ const vault=view.app.vault,folder='Quick Notes';
+ if(!vault.getAbstractFileByPath(folder))await vault.createFolder(folder);
+ const label=new Date().toISOString().slice(0,10);
+ let path=folder+'/'+label+'-writing.md',n=2;
+ while(vault.getAbstractFileByPath(path))path=folder+'/'+label+'-writing-'+n+++'.md';
+ const file=await vault.create(path,body+'\n');
+ const owns=()=>current()&&view.plugin.settings.v8Finish.homeQuick===drafts;
+ // Conservative on tab changes: retain the original draft if its editor is no longer selected.
+ if(!owns()||selected()!==slot||editor.value!==raw||drafts[slot]!==raw.slice(0,12000))return {file,cleared:false};
+ drafts[slot]='';editor.value='';
+ try{await view.plugin.saveSettings();}
+ catch(error){
+  // Restore only the value we cleared; a later edit always wins.
+  if(owns()&&drafts[slot]===''){
+   drafts[slot]=raw.slice(0,12000);
+   if(selected()===slot&&editor.value==='')editor.value=raw;
+  }
+  throw error;
+ }
+ return {file,cleared:true};
 }
 class WriterV8HomeView extends ItemView{
  constructor(leaf,plugin){super(leaf);this.plugin=plugin;this.disposed=false;this.saveTimer=null;this.widgetResizeObserver=null;}
@@ -13956,36 +14088,46 @@ class WriterV8HomeView extends ItemView{
  getDisplayText(){return String(this.plugin.settings?.v8Finish?.homeTitle||'').trim()||writerUi('Início · Escrita','Home · Writing');}
  getIcon(){return writerV8HomeIconName(this.plugin.settings?.v8Finish?.homeIcon);}
  async onOpen(){
+  if(this.homeSession)return;
+  const session=this.homeSession={};
   this.disposed=false;this.homeQuote=null;this.homeQuotePrevious='';this.homeGalleryImage=null;
   this.render();
   // Desktop-only: focus the search once when this view opens, not on every rerender.
   if(!writerV8HomeIsMobile(this.plugin)){
    this.homeFocusTimer=setTimeout(()=>{
-    if(!this.disposed&&this.app.workspace.activeLeaf===this.leaf){
+    if(this.homeSession===session&&!this.disposed&&this.app.workspace.activeLeaf===this.leaf){
      const target=this.homeSurfingInput?.isConnected?this.homeSurfingInput:this.homeSearchInput;
      if(target?.isConnected)target.focus({preventScroll:true});
     }
    },0);
   }
   this.writerV8ClockTimer=setInterval(()=>{
-   if(this.disposed)return;
+   if(this.disposed||this.homeSession!==session)return;
    this.writerV8ClockRefresh?.();
    this.syncSurfingVisibility();
   },1000);
  }
  async onClose(){
-  this.disposed=true;
+  this.disposed=true;this.homeSession=null;
+  this.homeRenderGeneration=(this.homeRenderGeneration||0)+1;
+  this.widgetFrameQueue?.dispose();this.widgetFrameQueue=null;
   clearTimeout(this.homeFocusTimer);this.homeFocusTimer=null;
   clearTimeout(this.homeSearchTimer);this.homeSearchTimer=null;
-  this.homeSearchInput=null;this.homeSurfingInput=null;
+  this.homeSearchInput=null;this.disposeSurfingBar();
   this.widgetResizeObserver?.disconnect();this.widgetResizeObserver=null;
   clearInterval(this.writerV8ClockTimer);this.writerV8ClockTimer=null;this.writerV8ClockRefresh=null;
   const unsaved=!!this.saveTimer;clearTimeout(this.saveTimer);this.saveTimer=null;
   if(unsaved)await this.plugin.saveSettings();
  }
  saveSoon(){
+  if(this.disposed)return;
   clearTimeout(this.saveTimer);
-  this.saveTimer=setTimeout(()=>{this.saveTimer=null;void this.plugin.saveSettings().catch(e=>console.warn('[Basic AI] homepage settings:',e));},600);
+  const session=this.homeSession;
+  const timer=setTimeout(()=>{
+   if(this.disposed||this.homeSession!==session||this.saveTimer!==timer)return;
+   this.saveTimer=null;void this.plugin.saveSettings().catch(e=>console.warn('[Basic AI] homepage settings:',e));
+  },600);
+  this.saveTimer=timer;
  }
  widgetPreferences(){
   const global=this.plugin.settings.v8Finish;
@@ -14009,9 +14151,12 @@ class WriterV8HomeView extends ItemView{
  render(){
   if(this.disposed)return;
   const scroll=this.contentEl.scrollTop||0;
+  this.homeRenderGeneration=(this.homeRenderGeneration||0)+1;
+  this.widgetFrameQueue?.dispose();this.widgetFrameQueue=null;
   clearTimeout(this.homeSearchTimer);this.homeSearchTimer=null;
   this.writerV8ClockRefresh=null;
   this.widgetResizeObserver?.disconnect();this.widgetResizeObserver=null;
+  this.disposeSurfingBar();
   this.contentEl.empty();this.contentEl.addClass('writer-v8-home');
   const cfg=this.plugin.settings.v8Finish,widgetCfg=this.widgetPreferences();
   // Surfing's omnibox is a permanent top address/search bar only while Surfing
@@ -14061,30 +14206,31 @@ class WriterV8HomeView extends ItemView{
   add.addEventListener('click',()=>this.manageWidgets());
   const grid=this.contentEl.createDiv({cls:'writer-v8-home-grid writer-v925-grid'});
   grid.dataset.widgetAlignment=widgetCfg.homeWidgetAlignment==='free'?'free':'grid';
+  const markdownFiles=writerV16HomeMarkdownSnapshot(this.app.vault);
   const cards={
    calendar:p=>this.renderCalendarWidget(p),
    soundscape:p=>writerV91HomeSoundscape(this,p),
    continue:p=>this.renderContinue(p),
-   recent:p=>this.renderFiles(p,'recent'),
+   recent:p=>this.renderFiles(p,'recent',markdownFiles),
    favorites:p=>this.renderFiles(p,'favorites'),
    webBookmarks:p=>this.renderWebBookmarks(p),
    quick:p=>this.renderQuick(p),
-   stats:p=>this.renderStats(p),
-   activity:p=>this.renderActivity(p),
-   random:p=>this.renderRandom(p),
-   tags:p=>this.renderTags(p),
+   stats:p=>this.renderStats(p,markdownFiles()),
+   activity:p=>this.renderActivity(p,markdownFiles()),
+   random:p=>this.renderRandom(p,markdownFiles()),
+   tags:p=>this.renderTags(p,markdownFiles()),
    goal:p=>this.renderGoal(p),
    gallery:p=>this.renderGallery(p),
    quotes:p=>this.renderQuotes(p),
-   today:p=>this.renderToday(p),
+   today:p=>this.renderToday(p,markdownFiles()),
     books:p=>{
      const card=this.card(p,'books','Meus livros','My books');
-     if(typeof writerV10RenderBookshelfWidget==='function')writerV10RenderBookshelfWidget(this,card);
+     if(typeof writerV10RenderBookshelfWidget==='function')writerV10RenderBookshelfWidget(this,card,markdownFiles());
      else card.createEl('p',{text:writerUi('Abra a biblioteca pelos comandos.','Open bookshelf using commands.')});
     },
     trash:p=>writerV10RenderTrashWidget(this,p),
     reading:p=>writerV10RenderReadingWidget(this,p),
-    zotero:p=>writerV10RenderZoteroWidget(this,p)
+    zotero:p=>writerV10RenderZoteroWidget(this,p,markdownFiles())
   };
   for(const key of widgetCfg.homeOrder){
    if(!WRITER_V8_HOME_SECTIONS.includes(key)||widgetCfg.homeHidden.includes(key))continue;
@@ -14212,8 +14358,11 @@ class WriterV8HomeView extends ItemView{
   }
  }
  installWidgetGrid(grid){
+  this.widgetFrameQueue?.dispose();
+  this.widgetResizeObserver?.disconnect();this.widgetResizeObserver=null;
+  const generation=this.homeRenderGeneration;
   const update=()=>{
-   if(this.disposed||!grid.isConnected)return;
+   if(this.disposed||this.homeRenderGeneration!==generation||!grid.isConnected)return;
    // Responsive widths depend on the pane, never the overall monitor.
    // Reset stale inline frame widths while compact, restore when expanded.
    const compact=grid.clientWidth<=760;
@@ -14233,18 +14382,24 @@ class WriterV8HomeView extends ItemView{
    }
    const gap=parseFloat(getComputedStyle(grid).rowGap)||10;
    const row=8;
-   for(const card of grid.querySelectorAll('[data-section]')){
-    const height=card.getBoundingClientRect().height;
-    if(height>0)card.style.gridRowEnd='span '+Math.max(1,Math.ceil((height+gap)/(row+gap)));
+   const measurements=[...grid.querySelectorAll('[data-section]')].map(card=>[card,card.getBoundingClientRect().height]);
+   for(const [card,height] of measurements){
+    const span='span '+Math.max(1,Math.ceil((height+gap)/(row+gap)));
+    if(height>0&&card.style.gridRowEnd!==span)card.style.gridRowEnd=span;
    }
   };
   // Each widget uses its own measured height, so short widgets fill available space.
-  if(typeof ResizeObserver==='function'){
-   this.widgetResizeObserver=new ResizeObserver(()=>requestAnimationFrame(update));
+  const host=grid.ownerDocument?.defaultView;
+  const request=host?.requestAnimationFrame?.bind(host)||requestAnimationFrame;
+  const cancel=host?.cancelAnimationFrame?.bind(host)||cancelAnimationFrame;
+  const queue=this.widgetFrameQueue=writerV16HomeFrameQueue(request,cancel,update);
+  const Observer=host?.ResizeObserver||(typeof ResizeObserver==='function'?ResizeObserver:null);
+  if(Observer){
+   this.widgetResizeObserver=new Observer(()=>queue.schedule());
    for(const card of grid.querySelectorAll('[data-section]'))this.widgetResizeObserver.observe(card);
    this.widgetResizeObserver.observe(grid);
   }
-  requestAnimationFrame(update);
+  queue.schedule();
  }
  setWidgetSize(key,size){
   if(!WRITER_V8_HOME_SECTIONS.includes(key)||!['compact','normal','wide'].includes(size))return;
@@ -14449,7 +14604,7 @@ class WriterV8HomeView extends ItemView{
  syncSurfingVisibility(){
   const surfing=writerV8HomeSurfing(this.plugin);
   const active=Boolean(!writerV8HomeIsMobile(this.plugin)&&surfing!==this.homeSurfingFailed&&typeof surfing?.addHeaderAndSearchBar==='function');
-  if(active!==this.homeSurfingEnabled)this.render();
+  if(active!==this.homeSurfingEnabled||(active&&this.homeSurfingMount?.surfing!==surfing))this.render();
  }
  homeSearchWebMode(){
   if(!this.homeSurfingInput?.isConnected){
@@ -14459,17 +14614,34 @@ class WriterV8HomeView extends ItemView{
   this.homeSurfingInput.focus({preventScroll:true});
   return true;
  }
+ disposeSurfingBar(){
+  const mount=this.homeSurfingMount;
+  this.homeSurfingMount=null;this.homeSurfingInput=null;
+  if(!mount)return;
+  // Surfing's private mount API does not return its HeaderBar or suggester.
+  // Blur the owned input before detaching it so Surfing can close suggestions
+  // and release its own keymap scope and positioning resources.
+  const input=mount.input||mount.host.querySelector?.('input.wb-search-bar');
+  try{if(mount.onInput)input?.removeEventListener?.('input',mount.onInput);}
+  catch(error){console.warn('[Basic AI] Surfing input cleanup:',error);}
+  try{input?.blur?.();}
+  catch(error){console.warn('[Basic AI] Surfing blur cleanup:',error);}
+  finally{mount.host.remove?.();}
+ }
  renderSurfingBar(parent){
+  this.disposeSurfingBar();
+  if(this.disposed)return;
   const surfing=writerV8HomeSurfing(this.plugin);
   if(!surfing||typeof surfing.addHeaderAndSearchBar!=='function'){
    // Surfing's HeaderBar is an internal component, not a public API.
    // Do not silently replace it with a second, imitation search field.
    this.homeSurfingEnabled=false;
-   this.homeSurfingInput=null;
    return;
   }
   const host=parent.createDiv({cls:'writer-v1205-native-surfing-host',
    attr:{role:'search','aria-label':writerUi('Pesquisa nativa do Surfing','Surfing native search')}});
+  const mount={surfing,host,input:null,onInput:null};
+  this.homeSurfingMount=mount;
   // Use Surfing's own HeaderBar and suggestions, without duplicating its
   // search/URL engine. Adapt an empty view only for the private integration
   // method; the actual Basic homepage view type and leaf remain unchanged.
@@ -14484,13 +14656,18 @@ class WriterV8HomeView extends ItemView{
    surfing.addHeaderAndSearchBar(adapter);
    const input=host.querySelector('input.wb-search-bar');
    if(!input)throw Error('Surfing did not mount its native address bar.');
+   mount.input=input;
    input.value=this.homeSurfingQuery||'';
-   input.addEventListener('input',()=>{this.homeSurfingQuery=input.value.slice(0,2048);});
+   mount.onInput=()=>{
+    if(!this.disposed&&this.homeSurfingMount===mount&&input.isConnected)
+     this.homeSurfingQuery=input.value.slice(0,2048);
+   };
+   input.addEventListener('input',mount.onInput);
    this.homeSurfingInput=input;
+   this.homeSurfingEnabled=true;
   }catch(error){
-   host.remove?.();
+   this.disposeSurfingBar();
    this.homeSurfingEnabled=false;
-   this.homeSurfingInput=null;
    this.homeSurfingFailed=surfing;
    console.warn('[Basic AI] Native Surfing header unavailable:',error);
   }
@@ -14500,6 +14677,8 @@ class WriterV8HomeView extends ItemView{
   box.addClass('writer-v901-home-search-card');
   const input=box.createEl('input',{cls:'writer-v8-home-search',attr:{type:'search',placeholder:writerUi('Pesquisar notas por nome, caminho ou conteúdo indexado…','Find notes by name, path or indexed content…'),'aria-label':writerUi('Buscar notas','Search notes'),autocomplete:'off'}});
   this.homeSearchInput=input;
+  const generation=this.homeRenderGeneration;
+  const current=()=>!this.disposed&&this.homeRenderGeneration===generation&&this.homeSearchInput===input;
   const results=box.createDiv({cls:'writer-v8-home-file-list writer-v901-home-search-results',attr:{role:'list','aria-label':writerUi('Notas encontradas','Matching notes')}});
   const status=box.createDiv({cls:'writer-v901-home-search-status',attr:{role:'status','aria-live':'polite','aria-atomic':'true'}});
   // A leading slash is a web-only command, not part of the search term.
@@ -14519,6 +14698,7 @@ class WriterV8HomeView extends ItemView{
    status.setText(writerUi('Selecionada ','Selected ')+(selected+1)+' / '+matches.length+' · '+file.path+' · '+writerUi('Enter para abrir','Enter to open'));
   };
   const draw=(preserve=false)=>{
+   if(!current())return;
    clearTimeout(this.homeSearchTimer);this.homeSearchTimer=null;
    const previous=preserve?matches[selected]?.path:'';
    results.empty();results.hidden=true;status.hidden=true;
@@ -14568,13 +14748,15 @@ class WriterV8HomeView extends ItemView{
    link.setText(webOnly?writerUi('Pesquisar na web','Search the web'):writerUi('Abrir endereço','Open address'));
    link.disabled=webOnly&&!slashTerm();
   };
+  let navigating=false;
   const open=async()=>{
-   link.disabled=true;
+   if(!current()||navigating)return;
+   navigating=true;link.disabled=true;
    try{
-    if(slashSearch())await writerV8HomeOpenNativeSearch(this.plugin,slashTerm());
-    else await writerV8HomeOpenURL(this.plugin,input.value);
-   }catch(error){new Notice(writerUi('Não foi possível abrir: ','Unable to open: ')+String(error.message||error).slice(0,160));}
-   finally{updateLink();}
+    if(slashSearch())await writerV8HomeOpenNativeSearch(this.plugin,slashTerm(),current);
+    else await writerV8HomeOpenURL(this.plugin,input.value,current);
+   }catch(error){if(current())new Notice(writerUi('Não foi possível abrir: ','Unable to open: ')+String(error.message||error).slice(0,160));}
+   finally{navigating=false;if(current())updateLink();}
   };
   link.addEventListener('click',()=>void open());
   input.addEventListener('keydown',event=>{
@@ -14597,11 +14779,13 @@ class WriterV8HomeView extends ItemView{
    }
   });
   input.addEventListener('input',()=>{
+   if(!current())return;
    updateLink();
    if(!input.value.trim()||slashSearch()){draw();return;}
    results.hidden=true;status.hidden=true;
    clearTimeout(this.homeSearchTimer);
-   this.homeSearchTimer=setTimeout(draw,100);
+   const timer=setTimeout(()=>{if(current()&&this.homeSearchTimer===timer)draw();},100);
+   this.homeSearchTimer=timer;
   });
   const focus=event=>{if(event.key==='/'&&!event.ctrlKey&&!event.metaKey&&!event.altKey&&
     !/INPUT|TEXTAREA/.test(event.target?.tagName||'')){event.preventDefault();input.focus();}};
@@ -14610,6 +14794,8 @@ class WriterV8HomeView extends ItemView{
  }
  renderWebBookmarks(parent){
   const box=this.card(parent,'webBookmarks','Favoritos da web','Web bookmarks');
+  const generation=this.homeRenderGeneration,session=this.homeSession;
+  const current=()=>!this.disposed&&this.homeSession===session&&this.homeRenderGeneration===generation&&box.isConnected;
   const cfg=this.plugin.settings.v8Finish,list=cfg.homeWebBookmarks||[];
   box.addClass('writer-v1205-bookmarks-widget');
   const tools=box.createDiv({cls:'writer-v1203-web-bookmarks-tools'});
@@ -14698,8 +14884,13 @@ class WriterV8HomeView extends ItemView{
      const labels=button.createSpan({cls:'writer-v1203-web-bookmark-labels'});
      labels.createSpan({text:bookmark.title,cls:'writer-v1203-web-bookmark-title'});
      labels.createSpan({text:domain,cls:'writer-v1203-web-bookmark-domain'});
-     button.addEventListener('click',()=>void writerV8HomeOpenURL(this.plugin,bookmark.url)
-      .catch(error=>new Notice(String(error.message||error))));
+     button.addEventListener('click',async()=>{
+      if(!current()||button.disabled)return;
+      button.disabled=true;
+      try{await writerV8HomeOpenURL(this.plugin,bookmark.url,current);}
+      catch(error){if(current())new Notice(String(error.message||error));}
+      finally{if(current())button.disabled=false;}
+     });
      const more=item.createEl('button',{cls:'writer-v1203-web-bookmark-more',
       attr:{type:'button',title:writerUi('Opções','Options'),
        'aria-label':writerUi('Opções do favorito ','Bookmark options for ')+bookmark.title}});
@@ -14791,16 +14982,16 @@ class WriterV8HomeView extends ItemView{
   };
   modal.open();
  }
- renderFiles(parent,kind){
+ renderFiles(parent,kind,getFiles){
   const recent=kind==='recent',box=this.card(parent,kind,recent?'Notas recentes':'Favoritos',recent?'Recent notes':'Favorites');
-  const files=recent?writerV8HomeTopFiles(this.plugin,12):
+  const files=recent?writerV8HomeTopFiles(this.plugin,12,getFiles):
    this.plugin.settings.v8Finish.homeFavorites.map(path=>this.app.vault.getAbstractFileByPath(path)).filter(file=>file instanceof TFile);
   this.renderNoteRows(box,files,kind);
  }
- renderToday(parent){
+ renderToday(parent,markdownFiles=this.app.vault.getMarkdownFiles?.()||[]){
   const box=this.card(parent,'today','Editadas hoje','Edited today'),midnight=new Date();
   midnight.setHours(0,0,0,0);
-  const files=(this.app.vault.getMarkdownFiles?.()||[])
+  const files=markdownFiles
    .filter(file=>(file.stat?.mtime||0)>=midnight.getTime())
    .sort((a,b)=>(b.stat?.mtime||0)-(a.stat?.mtime||0)).slice(0,24);
   this.renderNoteRows(box,files,'today');
@@ -14899,27 +15090,26 @@ class WriterV8HomeView extends ItemView{
   }
   pick(0);
   editor.addEventListener('input',()=>{this.plugin.settings.v8Finish.homeQuick[index]=editor.value.slice(0,12000);this.saveSoon();});
+  const generation=this.homeRenderGeneration,session=this.homeSession;
+  const current=()=>!this.disposed&&this.homeSession===session&&this.homeRenderGeneration===generation&&box.isConnected;
+  let exporting=false;
   save.addEventListener('click',async()=>{
-   save.disabled=true;message.setText('');
+   if(!current()||exporting)return;
+   const slot=index,raw=editor.value;
+   if(!raw.trim()){message.setText(writerUi('Escreva algo antes de exportar.','Write something before exporting.'));return;}
+   exporting=true;save.disabled=true;message.setText('');
    try{
-    const body=editor.value.trim();
-    if(!body){message.setText(writerUi('Escreva algo antes de exportar.','Write something before exporting.'));return;}
-    const folder='Quick Notes';
-    if(!this.app.vault.getAbstractFileByPath(folder))await this.app.vault.createFolder(folder);
-    const label=new Date().toISOString().slice(0,10);
-    let path=folder+'/'+label+'-writing.md',n=2;
-    while(this.app.vault.getAbstractFileByPath(path))path=folder+'/'+label+'-writing-'+n+++'.md';
-    const file=await this.app.vault.create(path,body+'\n');
-    this.plugin.settings.v8Finish.homeQuick[index]='';editor.value='';
-    await this.plugin.saveSettings();
+    const result=await writerV16HomeExportDraft(this,slot,raw,current,()=>index,editor);
+    if(!current())return;
     message.setText(writerUi('Nota criada.','Note created.'));
-    this.openFile(file);
-   }catch(error){message.setText(writerUi('Erro ao criar nota: ','Unable to create note: ')+String(error.message||error));}
-   finally{save.disabled=false;}
+    if(result.cleared&&index===slot&&editor.value==='')this.openFile(result.file);
+   }catch(error){
+    if(current())message.setText(writerUi('Erro ao exportar rascunho: ','Unable to export draft: ')+String(error.message||error));
+   }finally{exporting=false;if(current())save.disabled=false;}
   });
  }
- renderStats(parent){
-  const box=this.card(parent,'stats','Resumo do cofre','Vault summary'),stats=writerV8HomeStats(this.plugin);
+ renderStats(parent,files){
+  const box=this.card(parent,'stats','Resumo do cofre','Vault summary'),stats=writerV8HomeStats(this.plugin,files);
   const items=box.createDiv({cls:'writer-v8-home-stats'});
   for(const [value,pt,en] of [[stats.notes,'Notas Markdown','Markdown notes'],[stats.recent,'Editadas em 7 dias','Edited in 7 days']]){
    const item=items.createDiv({cls:'writer-v8-home-stat'});
@@ -14962,7 +15152,7 @@ class WriterV8HomeView extends ItemView{
   const manual=writerV8HomeQuoteChoices(this.plugin.settings.v8Finish.homeQuotes).map(([text,by])=>[text,by,null,null]);
   const mode=writerV92ZoteroQuoteMode(this.plugin),read=this.plugin.writerV92Research?.quotes;
   let loading=mode!=='manual'&&Boolean(read),list=mode==='only'?[]:manual;
-  const previous=this.homeQuote;
+  const previous=this.homeQuote,generation=this.homeRenderGeneration;
   const pick=(prior)=>list.find(quote=>quote[0]===prior?.[0]&&quote[2]===prior?.[2])||writerV8HomePick(list,this.homeQuotePrevious);
   let current=pick(previous);
   const initial=current;
@@ -14989,7 +15179,7 @@ class WriterV8HomeView extends ItemView{
   });
   draw();
   const load=entries=>{
-   if(!box.isConnected)return;
+   if(this.disposed||this.homeRenderGeneration!==generation||!box.isConnected)return;
    loading=false;
    list=mode==='both'?[...manual,...entries]:entries.length||mode==='only'?entries:manual;
    current=pick(current===initial?previous||current:current);
@@ -14997,16 +15187,11 @@ class WriterV8HomeView extends ItemView{
   };
   if(loading)void read().then(load,error=>{console.warn('[Basic AI] Zotero quote widget:',error);load([]);});
  }
- renderActivity(parent){
+ renderActivity(parent,files=this.app.vault.getMarkdownFiles?.()||[]){
   const box=this.card(parent,'activity','Atividade da semana','Weekly activity');
-  const files=this.app.vault.getMarkdownFiles?.()||[];
-  const now=new Date(),labels=[],counts=[];
-  for(let i=6;i>=0;i--){
-   const d=new Date(now.getFullYear(),now.getMonth(),now.getDate()-i);
-   const begin=d.getTime(),end=begin+86400000;
-   labels.push(new Intl.DateTimeFormat(writerUi('pt-BR','en-US'),{weekday:'short'}).format(d));
-   counts.push(files.filter(f=>(f.stat?.mtime||0)>=begin&&(f.stat?.mtime||0)<end).length);
-  }
+  const {days,counts}=writerV16HomeActivityCounts(files,new Date());
+  const formatter=new Intl.DateTimeFormat(writerUi('pt-BR','en-US'),{weekday:'short'});
+  const labels=days.map(day=>formatter.format(day));
   const high=Math.max(1,...counts),chart=box.createDiv({cls:'writer-v903-activity'});
   for(let i=0;i<7;i++){
    const column=chart.createDiv({cls:'writer-v903-activity-day',attr:{title:labels[i]+': '+counts[i]}});
@@ -15017,9 +15202,8 @@ class WriterV8HomeView extends ItemView{
   }
   box.createEl('p',{cls:'writer-v8-home-muted',text:writerUi('Notas modificadas a cada dia.','Notes modified each day.')});
  }
- renderRandom(parent){
+ renderRandom(parent,files=this.app.vault.getMarkdownFiles?.()||[]){
   const box=this.card(parent,'random','Nota surpresa','Surprise note');
-  const files=this.app.vault.getMarkdownFiles?.()||[];
   if(!files.length){box.createEl('p',{cls:'writer-v8-home-muted',text:writerUi('Nenhuma nota encontrada.','No notes found.')});return;}
   let file=files[Math.floor(Math.random()*files.length)];
   const label=box.createDiv({cls:'writer-v903-random-note'});
@@ -15038,9 +15222,9 @@ class WriterV8HomeView extends ItemView{
    name.setText(file.basename);path.setText(file.path);
   });
  }
- renderTags(parent){
+ renderTags(parent,files=this.app.vault.getMarkdownFiles?.()||[]){
   const box=this.card(parent,'tags','Tags frequentes','Popular tags');
-  const cache=this.app.metadataCache,counts=new Map(),files=this.app.vault.getMarkdownFiles?.()||[];
+  const cache=this.app.metadataCache,counts=new Map();
   const obsidian=require('obsidian');
   for(const file of files.slice(0,3000)){
    const meta=cache?.getFileCache?.(file);
@@ -15070,14 +15254,16 @@ class WriterV8HomeView extends ItemView{
   const fill=track.createDiv({cls:'writer-v903-goal-fill'});
   const foot=box.createEl('p',{cls:'writer-v8-home-muted',text:file?.path||writerUi('Abra uma nota Markdown para acompanhar.','Open a Markdown note to begin tracking.')});
   if(!(file instanceof TFile)||file.extension!=='md')return;
+  const generation=this.homeRenderGeneration;
+  const current=()=>!this.disposed&&this.homeRenderGeneration===generation&&box.isConnected;
   Promise.resolve(this.app.vault.cachedRead(file)).then(content=>{
-   if(this.disposed||!box.isConnected)return;
+   if(!current())return;
    const words=(String(content||'').match(/[^\s]+/g)||[]).length;
    count.setText(String(words));target.setText('/ '+cfg.homeWordGoal+' '+writerUi('palavras','words'));
    fill.style.width=Math.min(100,words/cfg.homeWordGoal*100)+'%';
    track.setAttribute('aria-valuenow',String(Math.min(words,cfg.homeWordGoal)));
    foot.setText(file.path);
-  }).catch(()=>{foot.setText(writerUi('Não foi possível ler a nota.','Could not read note.'));});
+  }).catch(()=>{if(current())foot.setText(writerUi('Não foi possível ler a nota.','Could not read note.'));});
  }
 
 }
@@ -15091,8 +15277,12 @@ function writerV8HomeToggleFavorite(plugin,path){
  plugin.writerV92Explorer?.schedule?.();
 }
 function writerV8RegisterHome(plugin){
+ if(plugin._writerV16HomeRegistration)return;
+ const session={active:true};plugin._writerV16HomeRegistration=session;
+ const active=()=>session.active&&plugin._writerV16HomeRegistration===session;
  plugin.registerView?.(WRITER_V8_HOME_VIEW,leaf=>new WriterV8HomeView(leaf,plugin));
  const open=async()=>{
+  if(!active())return;
   const workspace=plugin.app.workspace,existing=workspace.getLeavesOfType?.(WRITER_V8_HOME_VIEW)?.[0];
   if(existing){
    // Opening an already present Home tab is a new visit, not an incidental rerender.
@@ -15107,6 +15297,7 @@ function writerV8RegisterHome(plugin){
  plugin.addCommand({id:'v1203-bookmark-current-webpage',
   name:writerUi('Web: favoritar página aberta no Surfing','Web: bookmark current Surfing page'),
   callback:async()=>{
+   if(!active())return;
    const view=plugin.app.workspace.activeLeaf?.view;
    const type=view?.getViewType?.();
    if(type!=='surfing-view'&&type!=='webviewer'){
@@ -15116,16 +15307,20 @@ function writerV8RegisterHome(plugin){
    if(!url){new Notice(writerUi('Essa página não possui um endereço web válido.','This page has no valid web address.'));return;}
    const bookmark={url,title:String(view.getCurrentTitle?.()||view.getDisplayText?.()||new URL(url).hostname).slice(0,70)};
    await open();
+   if(!active())return;
    const home=plugin.app.workspace.getLeavesOfType?.(WRITER_V8_HOME_VIEW)?.[0]?.view;
    home?.editWebBookmark?.(bookmark);
   }});
  plugin.addCommand({id:'v1203-web-search',name:writerUi('Web: pesquisar na homepage','Web: search from home'),
   callback:async()=>{
+   if(!active())return;
    await open();
+   if(!active())return;
    const view=plugin.app.workspace.getLeavesOfType?.(WRITER_V8_HOME_VIEW)?.[0]?.view;
    view?.homeSearchWebMode?.();
   }});
  plugin.addCommand({id:'v8-toggle-current-favorite',name:writerUi('Início: favoritar nota atual','Home: toggle current note favorite'),callback:()=>{
+  if(!active())return;
   const file=plugin.app.workspace.getActiveFile?.();
   if(!(file instanceof TFile))return new Notice(writerUi('Abra uma nota primeiro.','Open a note first.'));
   writerV8HomeToggleFavorite(plugin,file.path);
@@ -15134,25 +15329,32 @@ function writerV8RegisterHome(plugin){
  }});
  let timer=null;
  plugin.registerEvent(plugin.app.workspace.on('file-open',file=>{
-  if(!(file instanceof TFile)||file.extension!=='md')return;
+  if(!active()||!(file instanceof TFile)||file.extension!=='md')return;
   const recents=plugin.settings?.v8Finish?.homeRecent;
   if(!recents)return;
   plugin.settings.v8Finish.homeRecent=[file.path,...recents.filter(p=>p!==file.path)].slice(0,16);
   clearTimeout(timer);
-  timer=setTimeout(()=>{timer=null;void plugin.saveSettings().catch(console.warn);},1400);
+  const ticket=setTimeout(()=>{if(!active()||timer!==ticket)return;timer=null;void plugin.saveSettings().catch(console.warn);},1400);timer=ticket;
  }));
  plugin.registerEvent(plugin.app.vault.on('rename',(file,old)=>{
+  if(!active())return;
   const cfg=plugin.settings.v8Finish;
   if(!(file instanceof TFile))return;
   cfg.homeFavorites=cfg.homeFavorites.map(p=>p===old?file.path:p);
   cfg.homeRecent=cfg.homeRecent.map(p=>p===old?file.path:p);
  }));
- plugin.register?.(()=>clearTimeout(timer));
+ plugin.register?.(()=>{
+  session.active=false;clearTimeout(timer);timer=null;
+  if(plugin._writerV16HomeRegistration===session){
+   delete plugin._writerV16HomeRegistration;
+   if(plugin.writerV8HomeOpen===open)delete plugin.writerV8HomeOpen;
+  }
+ });
  // Reconcile only ATTACHED, empty root tabs; never touch existing notes,
  // settings, sidebars, restored sessions or the native Web Viewer.
  let tabTimer=null,tabBusy=false;
  const populateEmptyTabs=()=>{
-  if(tabBusy||!plugin._writerV106HomeStarted||plugin._writerV106HomeStarting||!plugin.settings?.v8Finish?.homeOnNewTab||!writerModuleOn(plugin,'writingHome'))return;
+  if(!active()||tabBusy||!plugin._writerV106HomeStarted||plugin._writerV106HomeStarting||!plugin.settings?.v8Finish?.homeOnNewTab||!writerModuleOn(plugin,'writingHome'))return;
   tabBusy=true;
   try{
    for(const leaf of writerV8HomeAttachedEmpty(plugin.app.workspace)){
@@ -15166,20 +15368,20 @@ function writerV8RegisterHome(plugin){
   }finally{tabBusy=false;}
  };
  const schedule=()=>{
-  if(!plugin._writerV106HomeStarted||plugin._writerV106HomeStarting||!plugin.settings?.v8Finish?.homeOnNewTab)return;
+  if(!active()||!plugin._writerV106HomeStarted||plugin._writerV106HomeStarting||!plugin.settings?.v8Finish?.homeOnNewTab)return;
   clearTimeout(tabTimer);
-  tabTimer=setTimeout(()=>{tabTimer=null;populateEmptyTabs();},85);
+  const ticket=setTimeout(()=>{if(!active()||tabTimer!==ticket)return;tabTimer=null;populateEmptyTabs();},85);tabTimer=ticket;
  };
  if(typeof plugin.app.workspace.on==='function'){
   plugin.registerEvent(plugin.app.workspace.on('layout-change',schedule));
   plugin.registerEvent(plugin.app.workspace.on('active-leaf-change',leaf=>{
-   if(writerV8HomeIsRootEmpty(leaf))schedule();
+   if(active()&&writerV8HomeIsRootEmpty(leaf))schedule();
   }));
  }
- plugin.register?.(()=>clearTimeout(tabTimer));
+ plugin.register?.(()=>{clearTimeout(tabTimer);tabTimer=null;});
  if(typeof writerV106HomeRegisterStartup==='function')writerV106HomeRegisterStartup(plugin,open);
  if(typeof plugin.app.workspace.onLayoutReady==='function')
-  plugin.app.workspace.onLayoutReady(()=>{if(plugin.settings.v8Finish.homeOnNewTab)schedule();});
+  plugin.app.workspace.onLayoutReady(()=>{if(active()&&plugin.settings.v8Finish.homeOnNewTab)schedule();});
 }
 function writerV8FinishSettings(plugin,panel){
  const cfg=plugin.settings.v8Finish;
@@ -15650,32 +15852,54 @@ function writerV1045OrganizeEditorMenu(plugin,menu,editor){
  });
  if(!moved)return;
 }
+// Dispose Basic wrappers without overwriting third-party changes. Retained
+// wrappers become transparent and owned restoration skips inactive layers.
+const writerV16MethodPatches=new WeakMap();
+function writerV16PatchMethod(target,key,around){
+ const original=target?.[key];
+ if(typeof original!=='function')return ()=>{};
+ let handler=around;
+ const replacement=function(...args){
+  return handler?handler(original,this,args):original.apply(this,args);
+ };
+ const entry={original,active:true,target,key};
+ try{target[key]=replacement;}catch(_){return ()=>{};}
+ if(target[key]!==replacement)return ()=>{};
+ writerV16MethodPatches.set(replacement,entry);
+ return ()=>{
+  if(!entry.active)return;
+  entry.active=false;handler=null;
+  if(target[key]!==replacement)return;
+  let next=original,prior=writerV16MethodPatches.get(next);
+  while(prior&&!prior.active&&prior.target===target&&prior.key===key){
+   next=prior.original;prior=writerV16MethodPatches.get(next);
+  }
+  try{target[key]=next;}catch(_){}
+ };
+}
+const writerV16ContextMenuSessions=new WeakMap();
 function writerV1044ContextMenus(plugin){
- // Register early to identify which menus belong to our editor, but finalize
- // at display time, *after* every other editor-menu subscriber has added items.
+ if(writerV16ContextMenuSessions.has(plugin))return;
+ const session={active:true},dispose=[];
+ writerV16ContextMenuSessions.set(plugin,session);
+ plugin.register?.(()=>{
+  if(!session.active)return;
+  session.active=false;
+  if(writerV16ContextMenuSessions.get(plugin)===session)writerV16ContextMenuSessions.delete(plugin);
+  for(const cleanup of dispose.reverse())cleanup();
+ });
  plugin.registerEvent?.(plugin.app.workspace.on('editor-menu',(menu,editor)=>{
-  if(!plugin.settings.v9Toolbar||!editor)return;
+  if(!session.active||!plugin.settings.v9Toolbar||!editor)return;
   menu.__writerV1045Editor=editor;
  }));
  if(typeof Menu==='undefined'||!Menu?.prototype)return;
- const prototype=Menu.prototype,patches=[];
  for(const key of ['showAtMouseEvent','showAtPosition','showAtCoordinates']){
-  const original=prototype[key];
-  if(typeof original!=='function')continue;
-  const replacement=function(){
-   if(this.__writerV1045Editor&&!this.__writerV1045Organized)
-    writerV1045OrganizeEditorMenu(plugin,this,this.__writerV1045Editor);
-   return original.apply(this,arguments);
-  };
-  try{prototype[key]=replacement;
-   if(prototype[key]===replacement)patches.push([key,original,replacement]);
-  }catch(_){}
+  dispose.push(writerV16PatchMethod(Menu.prototype,key,(original,menu,args)=>{
+   if(session.active&&menu.__writerV1045Editor&&!menu.__writerV1045Organized)
+    writerV1045OrganizeEditorMenu(plugin,menu,menu.__writerV1045Editor);
+   return original.apply(menu,args);
+  }));
  }
- plugin.register?.(()=>{
-  for(const [key,original,replacement] of patches){
-   if(prototype[key]===replacement)prototype[key]=original;
-  }
- });
 }
 
 function writerV1048ToolbarLabel(cfg,item){
@@ -16644,7 +16868,7 @@ function writerV9215SelectSpace(plugin,id){
  const switchSpace=async()=>{
   const cfg=plugin.settings.v9Spaces;
   const next=cfg.enabled&&cfg.spaces.some(space=>space.id===id)?id:'';
-  if(cfg.activeId===next)return;
+  if(cfg.activeId===next)return false;
   const previousId=cfg.activeId,previous=cfg.spaces.find(space=>space.id===previousId);
   // Keep a failed destination's saved layout: the current panes still belong
   // to the source. An explicit save or successful restore clears this guard.
@@ -16666,6 +16890,7 @@ function writerV9215SelectSpace(plugin,id){
     plugin._writerV133FailedSpaceLayout=next;
   }
   refresh();
+  return true;
  };
  // Serialize layout saves/restores too: an older asynchronous restore must never
  // finish after a newer selection and overwrite that Space's workspace.
@@ -17005,11 +17230,13 @@ class WriterV9SpacesSideView extends ItemView{
   const activeSpace=writerV9215ActiveSpace(this.plugin);
   const space=activeSpace||{mode:'filter',sort:'recent',hiddenPaths:[],pinnedPaths:[]};
   this.currentId=activeSpace?.id||'';
+  const renderUnchangedSelection=changed=>{
+   if(!changed&&root.isConnected!==false)this.render();
+  };
   const select=id=>{
    this.query='';
-   void writerV9215SelectSpace(this.plugin,id).then(()=>this.render(),error=>{
+   void writerV9215SelectSpace(this.plugin,id).then(renderUnchangedSelection,error=>{
     new Notice(writerUi('Não foi possível trocar de Space: ','Could not switch Space: ')+String(error.message||error));
-    this.render();
    });
   };
   const all=nav.createEl('button',{cls:'writer-v9-space-side-tab'+(!activeSpace?' is-active':''),
@@ -17035,7 +17262,7 @@ class WriterV9SpacesSideView extends ItemView{
   };
   quick('Nova Space','New Space','plus',()=>writerV9SpaceEditor(this.plugin,null,async created=>{
    cfg.spaces.push(created);await this.plugin.saveSettings();
-   await writerV9215SelectSpace(this.plugin,created.id);this.currentId=created.id;this.render();
+   renderUnchangedSelection(await writerV9215SelectSpace(this.plugin,created.id));
   }));
   quick('Biblioteca Longform','Longform bookshelf','library',()=>this.plugin.writerV10OpenBookshelf?.());
   quick('Ordenação global','Global sorting','list-ordered',()=>writerV1043OpenNativeSortMenu(this.plugin));
@@ -17140,7 +17367,6 @@ function writerV9RegisterSpaces(plugin){
       space.id='space-'+Date.now().toString(36);
       plugin.settings.v9Spaces.spaces.push(space);
       await writerV9215SelectSpace(plugin,space.id);
-      plugin.writerV91FlexRefresh?.();plugin.writerV9SpacesRefresh?.();plugin.writerV9216SpacesDockRefresh?.();
      });
     }));
   }
@@ -17404,8 +17630,7 @@ function writerV9216SpaceDockRegister(plugin){
     closeMobile();
    }
    void Promise.resolve(writerV9215SelectSpace(plugin,id))
-    .catch(error=>console.error('[Basic] Could not switch Space:',error))
-    .finally(()=>plugin.writerV9216SpacesDockRefresh?.());
+    .catch(error=>console.error('[Basic] Could not switch Space:',error));
   };
   const rail=doc.createElement('div');
   rail.className='writer-v9216-spaces-rail';
@@ -17840,8 +18065,14 @@ function writerV9CalOccurrence(event,start,end){
  const firstWeekday=writerV9CalWeekday(event.date),selected=weekdays.length?weekdays:[firstWeekday];
  const [firstYear,firstMonth,firstDay]=event.date.split('-').map(Number);
  const startN=writerV9CalDayNumber(start),endN=writerV9CalDayNumber(end);
+ const lastN=Math.min(endN,startN+3659);
+ if(a>lastN||until&&until<start)return [];
+ if(!['daily','weekly','monthly','yearly'].includes(event.repeat)){
+  if(a<startN||until&&event.date>until||exclusions.has(event.date))return [];
+  return [{...event,occurs:event.date}];
+ }
  const results=[];
- for(let dayN=Math.max(startN,a);dayN<=Math.min(endN,startN+3659);dayN++){
+ for(let dayN=Math.max(startN,a);dayN<=lastN;dayN++){
   const date=new Date(dayN*86400000);
   const day=[date.getUTCFullYear(),String(date.getUTCMonth()+1).padStart(2,'0'),String(date.getUTCDate()).padStart(2,'0')].join('-');
   if(until&&day>until)break;
@@ -17949,9 +18180,13 @@ function writerV9CalendarPeriod(view){
 }
 function writerV9CalRows(view,start,end){
  const rows=[];
- for(const event of view.events)rows.push(...writerV83CalOccurrence(event,start,end));
+ const category=view.writerV9CategoryFilter;
+ for(const event of view.events){
+  if(category&&(event.category||'')!==category)continue;
+  rows.push(...writerV83CalOccurrence(event,start,end));
+ }
  rows.sort((a,b)=>a.occurs.localeCompare(b.occurs)||(a.time||'').localeCompare(b.time||'')||a.title.localeCompare(b.title));
- return view.writerV9CategoryFilter?rows.filter(event=>(event.category||'')===view.writerV9CategoryFilter):rows;
+ return rows;
 }
 function writerV9CalButton(parent,label,icon,click,title){
  const btn=parent.createEl('button',{cls:'writer-v9-calendar-button',attr:{type:'button','aria-label':title||label,title:title||label}});
@@ -19402,7 +19637,7 @@ function writerV104FlexNativeSort(plugin,folder,items){
  if(rows.some(row=>!row.file?.name))return items;
  if(record.sort==='native'&&!rows.some(row=>row.pinned))return items;
  const collator=new Intl.Collator(undefined,{numeric:true,sensitivity:'base'});
- rows.sort((a,b)=>writerV93FlexCompare(plugin,a,b,record,collator));
+ writerV16FlexSortRows(plugin,rows,record,collator);
  return rows.map(row=>row.source);
 }
 /* Supports a small, explicit subset of the Custom Sorting YAML syntax. */
@@ -19488,7 +19723,20 @@ function writerV93FlexMeta(plugin,row,key){
   (typeof writerV92FolderNote==='function'?writerV92FolderNote(plugin.app,row.file):null);
  return file?plugin.app.metadataCache?.getFileCache?.(file)?.frontmatter?.[key]??'':'';
 }
-function writerV93FlexCompare(plugin,a,b,record,collator){
+// Cache sort keys only for one synchronous sort; later metadata edits and
+// Space changes are observed on the next invocation.
+function writerV16FlexSortRows(plugin,rows,record,collator){
+ const keys=new Map(),mode=record.sort;
+ const read=mode==='custom'?row=>writerV93FlexOrderIndex(row.name,record.order||[]):
+  mode==='number'||mode==='number-desc'?row=>writerV93FlexNumber(row.name):
+  mode==='property'||mode==='property-desc'?row=>writerV93FlexMeta(plugin,row,record.property||plugin.settings.v91Flex.defaultSortProperty):null;
+ const key=read?row=>{
+  if(!keys.has(row))keys.set(row,read(row));
+  return keys.get(row);
+ }:null;
+ return rows.sort((a,b)=>writerV93FlexCompare(plugin,a,b,record,collator,key));
+}
+function writerV93FlexCompare(plugin,a,b,record,collator,keyFor=null){
  if(a.pinned!==b.pinned)return a.pinned?-1:1;
  if(record.foldersFirst){
   const af=a.file?.children!==undefined,bf=b.file?.children!==undefined;
@@ -19497,11 +19745,11 @@ function writerV93FlexCompare(plugin,a,b,record,collator){
  const mode=record.sort;
  if(mode==='native')return a.index-b.index;
  if(mode==='custom'){
-  const ia=writerV93FlexOrderIndex(a.name,record.order||[]),ib=writerV93FlexOrderIndex(b.name,record.order||[]);
+  const ia=keyFor?keyFor(a):writerV93FlexOrderIndex(a.name,record.order||[]),ib=keyFor?keyFor(b):writerV93FlexOrderIndex(b.name,record.order||[]);
   return ia!==ib?ia-ib:a.index-b.index;
  }
  if(mode==='number'||mode==='number-desc'){
-  const na=writerV93FlexNumber(a.name),nb=writerV93FlexNumber(b.name);
+  const na=keyFor?keyFor(a):writerV93FlexNumber(a.name),nb=keyFor?keyFor(b):writerV93FlexNumber(b.name);
   if(na!==nb)return mode==='number-desc'?nb-na:na-nb;
  }
  if(mode==='folders-first'){
@@ -19510,7 +19758,7 @@ function writerV93FlexCompare(plugin,a,b,record,collator){
  }
  if(mode==='property'||mode==='property-desc'){
   const key=record.property||plugin.settings.v91Flex.defaultSortProperty;
-  const av=writerV93FlexMeta(plugin,a,key),bv=writerV93FlexMeta(plugin,b,key);
+  const av=keyFor?keyFor(a):writerV93FlexMeta(plugin,a,key),bv=keyFor?keyFor(b):writerV93FlexMeta(plugin,b,key);
   if(av!==''&&bv!==''&&Number.isFinite(Number(av))&&Number.isFinite(Number(bv))&&Number(av)!==Number(bv))
    return (Number(av)-Number(bv))*(mode==='property-desc'?-1:1);
   const delta=collator.compare(String(av),String(bv));if(delta)return mode==='property-desc'?-delta:delta;
@@ -19545,16 +19793,46 @@ function writerV1047ToggleMobileReorder(plugin,requested){
  return next;
 }
 
-function writerV91FlexSortGroup(plugin,container,patterns,nativePatched=false){
+function writerV16FlexConceal(node,hidden){
+ const data=node.dataset,style=node.style;
+ if(hidden){
+  if(data.writerFlexConcealed!=='true'){
+   data.writerFlexPreviousVisibility=style.getPropertyValue('display');
+   data.writerFlexPreviousVisibilityPriority=style.getPropertyPriority('display');
+   data.writerFlexConcealed='true';
+  }
+  style.setProperty('display','none','important');
+ }else if(data.writerFlexConcealed==='true'){
+  if(style.getPropertyValue('display')==='none'&&style.getPropertyPriority('display')==='important'){
+   if(data.writerFlexPreviousVisibility)style.setProperty('display',data.writerFlexPreviousVisibility,data.writerFlexPreviousVisibilityPriority||'');
+   else style.removeProperty('display');
+  }
+  delete data.writerFlexConcealed;delete data.writerFlexPreviousVisibility;delete data.writerFlexPreviousVisibilityPriority;
+ }
+}
+function writerV16FlexDraggable(title,enabled,path){
+ const data=title.dataset;
+ if(enabled){
+  if(!data.writerFlexPath)data.writerFlexPreviousDraggable=title.getAttribute('draggable')??'';
+  title.draggable=true;data.writerFlexPath=path;
+ }else if(data.writerFlexPath){
+  if(title.draggable===true){
+   if(data.writerFlexPreviousDraggable)title.setAttribute('draggable',data.writerFlexPreviousDraggable);
+   else title.removeAttribute('draggable');
+  }
+  delete data.writerFlexPath;delete data.writerFlexPreviousDraggable;
+ }
+}
+function writerV91FlexSortGroup(plugin,container,patterns,nativePatched=false,view=plugin.app.workspace.getLeavesOfType?.('file-explorer')?.[0]?.view){
  const cfg=plugin.settings.v91Flex,children=Array.from(container.children).filter(node=>
   node.classList?.contains('nav-file')||node.classList?.contains('nav-folder')||node.classList?.contains('tree-item'));
  if(!children.length)return;
  const parentNode=container.closest('.nav-folder');
- const dir=parentNode?writerV91FlexNodePath(parentNode,plugin.app.workspace.getLeavesOfType?.('file-explorer')?.[0]?.view):'';
+ const dir=parentNode?writerV91FlexNodePath(parentNode,view):'';
  const folder=writerV93FlexRecord(plugin,dir);
  const rows=children.map((node,index)=>{
-  const path=writerV91FlexNodePath(node,plugin.app.workspace.getLeavesOfType?.('file-explorer')?.[0]?.view);
-  const file=plugin.app.vault.getAbstractFileByPath(path);
+  const path=writerV91FlexNodePath(node,view);
+  const file=plugin.app.vault.getAbstractFileByPath(path),pinned=writerV93FlexPinned(plugin,path);
   const title=node.querySelector('.nav-file-title, .nav-folder-title');
   const visibility=writerV1202SpaceVisibility(plugin,cfg,path,patterns);
   const isHidden=visibility.rule;
@@ -19564,29 +19842,24 @@ function writerV91FlexSortGroup(plugin,container,patterns,nativePatched=false){
   node.classList.toggle('writer-v91-flex-hidden',conceal);
   // Native file explorer styles may override simple CSS classes, so also set
   // a scoped inline display value. Never touch vault contents or file paths.
-  if(conceal){node.dataset.writerFlexConcealed='true';node.style.setProperty('display','none','important');}
-  else if(node.dataset.writerFlexConcealed==='true'){
-   delete node.dataset.writerFlexConcealed;node.style.removeProperty('display');
-  }
+  writerV16FlexConceal(node,conceal);
   node.classList.toggle('writer-v91-flex-revealed',Boolean(cfg.enabled&&isHidden&&cfg.showHidden&&visibility.scope!=='excluded'));
-  node.classList.toggle('writer-v91-flex-pinned',Boolean(cfg.enabled&&writerV93FlexPinned(plugin,path)));
+  node.classList.toggle('writer-v91-flex-pinned',Boolean(cfg.enabled&&pinned));
   if(title){
    title.classList?.toggle?.('writer-v1047-reorder-title',
     cfg.enabled&&folder.sort==='custom'&&writerV1047MobileReorderVisible(plugin));
    if(!cfg.enabled||folder.sort!=='custom'||!writerV1047MobileReorderVisible(plugin))
     title.querySelector(':scope > .writer-v93-reorder-actions')?.remove();
-   if((!cfg.enabled||folder.sort!=='custom')&&title.dataset.writerFlexPath){
-    title.draggable=false;delete title.dataset.writerFlexPath;
-   }
+   if(!cfg.enabled||cfg.sortEnabled===false||folder.sort!=='custom'||!cfg.dragReorder)writerV16FlexDraggable(title,false);
    const prior=title.querySelector(':scope > .writer-v91-flex-indicator');
-   const wanted=cfg.enabled&&writerV93FlexPinned(plugin,path);
+   const wanted=cfg.enabled&&pinned;
    if(prior&&!wanted)prior.remove();
    if(wanted&&!prior){
     const icon=title.ownerDocument.createElement('span');icon.className='writer-v91-flex-indicator';
     icon.setAttribute('aria-hidden','true');require('obsidian').setIcon(icon,'pin');title.appendChild(icon);
    }
   }
-  return {node,path,file,title,index,name:file?.name||path.split('/').pop()||'',pinned:writerV93FlexPinned(plugin,path)};
+  return {node,path,file,title,index,name:file?.name||path.split('/').pop()||'',pinned};
  });
  if(!cfg.enabled||cfg.sortEnabled===false||(folder.sort==='native'&&!rows.some(row=>row.pinned))){
   if(container.dataset.writerFlexOrderHost==='1'){
@@ -19602,7 +19875,7 @@ function writerV91FlexSortGroup(plugin,container,patterns,nativePatched=false){
   return;
  }
  const collator=new Intl.Collator(undefined,{numeric:true,sensitivity:'base'});
- rows.sort((a,b)=>writerV93FlexCompare(plugin,a,b,folder,collator));
+ writerV16FlexSortRows(plugin,rows,folder,collator);
  // With a native sorted list, do not impose a second CSS order on its DOM.
  // The CSS fallback is retained for Obsidian versions without this method.
  if(nativePatched){
@@ -19656,8 +19929,7 @@ function writerV91FlexSortGroup(plugin,container,patterns,nativePatched=false){
  if(folder.sort==='custom'&&cfg.dragReorder){
   for(const row of rows){
    const title=row.title;if(!title)continue;
-   title.draggable=true;
-   title.dataset.writerFlexPath=row.path;
+   writerV16FlexDraggable(title,true,row.path);
   }
  }
 }
@@ -19797,65 +20069,65 @@ function writerV1043GlobalSortingMenu(plugin,menu){
   menu.addItem(item=>item.setTitle(writerUi('Restaurar ordem nativa em todas as pastas','Restore native order in all folders'))
   .setIcon('rotate-ccw').onClick(()=>void set('native')));
 }
+const writerV16FlexSessions=new WeakMap();
 function writerV91FlexRegister(plugin){
+ if(writerV16FlexSessions.has(plugin))return;
+ const session={active:true};
+ writerV16FlexSessions.set(plugin,session);
  const cfg=plugin.settings.v91Flex;
  // Never carry editing mode between Obsidian sessions or after plugin reload.
  plugin.writerV91FlexMobileSortActive=false;
- plugin.writerV91FlexToggleMobileReorder=()=>writerV1047ToggleMobileReorder(plugin);
+ const toggleMobile=()=>session.active&&writerV1047ToggleMobileReorder(plugin);
+ plugin.writerV91FlexToggleMobileReorder=toggleMobile;
  plugin.addCommand?.({
   id:'v1047-toggle-explorer-mobile-reorder',
   name:writerUi('Explorador: ativar ou desativar reorganização móvel','Explorer: toggle mobile reorder mode'),
-  callback:()=>writerV1047ToggleMobileReorder(plugin)
+  callback:toggleMobile
  });
  let timer=null,observer=null,lastDrag='',dropNode=null;
- const patched=new Map();
- const active=()=>cfg.enabled&&writerModuleOn(plugin,'nativeExplorer');
+ const patched=new Map(),sortSetters=new Map();
+ const active=()=>session.active&&cfg.enabled&&writerModuleOn(plugin,'nativeExplorer');
  const patchView=view=>{
-  if(!view||!cfg.nativeSortIntegration)return false;
+  if(!session.active||!view||!cfg.nativeSortIntegration)return false;
   let owner=view;
   while(owner&&!Object.prototype.hasOwnProperty.call(owner,'getSortedFolderItems'))
    owner=Object.getPrototypeOf(owner);
   if(!owner||typeof owner.getSortedFolderItems!=='function')return false;
-  if(patched.has(owner))return true;
-  const previous=owner.getSortedFolderItems;
-  const adapter=function(folder){
-   const result=previous.apply(this,arguments);
-   return writerV104FlexNativeSort(plugin,folder,result);
-  };
-  try{owner.getSortedFolderItems=adapter;}catch(_){return false;}
-  if(owner.getSortedFolderItems!==adapter)return false;
+  if(!patched.has(owner)){
+   const previous=owner.getSortedFolderItems;
+   const dispose=writerV16PatchMethod(owner,'getSortedFolderItems',(original,self,args)=>{
+    const result=original.apply(self,args);
+    return active()&&cfg.nativeSortIntegration?writerV104FlexNativeSort(plugin,args[0],result):result;
+   });
+   if(owner.getSortedFolderItems===previous)return false;
+   patched.set(owner,dispose);
+  }
   let setOwner=view;
   while(setOwner&&!Object.prototype.hasOwnProperty.call(setOwner,'setSortOrder'))
    setOwner=Object.getPrototypeOf(setOwner);
-  let originalSet=null,wrappedSet=null;
-  if(setOwner&&typeof setOwner.setSortOrder==='function'){
-   originalSet=setOwner.setSortOrder;
-   wrappedSet=function(mode){
-    const result=originalSet.apply(this,arguments);
-    if(cfg.globalSortMode!=='native'){
+  if(setOwner&&typeof setOwner.setSortOrder==='function'&&!sortSetters.has(setOwner)){
+   const previous=setOwner.setSortOrder;
+   const dispose=writerV16PatchMethod(setOwner,'setSortOrder',(original,self,args)=>{
+    const result=original.apply(self,args);
+    if(active()&&cfg.nativeSortIntegration&&cfg.globalSortMode!=='native'){
      cfg.globalSortMode='native';
      void plugin.saveSettings();
      plugin.writerV91FlexRefresh?.();
     }
     return result;
-   };
-   try{setOwner.setSortOrder=wrappedSet;}catch(_){wrappedSet=null;}
+   });
+   if(setOwner.setSortOrder!==previous)sortSetters.set(setOwner,dispose);
   }
-  patched.set(owner,{previous,adapter,setOwner,originalSet,wrappedSet});
   return true;
  };
- let menuPrototype=null,originalMenuShow=null,wrappedMenuShow=null;
- if(typeof Menu!=='undefined'&&Menu?.prototype&&typeof Menu.prototype.showAtMouseEvent==='function'){
-  menuPrototype=Menu.prototype;
-  originalMenuShow=menuPrototype.showAtMouseEvent;
-  wrappedMenuShow=function(event){
-   if(writerV1043IsSortButton(event))writerV1043GlobalSortingMenu(plugin,this);
-   return originalMenuShow.apply(this,arguments);
-  };
-  try{menuPrototype.showAtMouseEvent=wrappedMenuShow;}catch(_){wrappedMenuShow=null;}
- }
+ const disposeMenu=typeof Menu!=='undefined'&&Menu?.prototype
+  ?writerV16PatchMethod(Menu.prototype,'showAtMouseEvent',(original,menu,args)=>{
+   if(active()&&writerV1043IsSortButton(args[0]))writerV1043GlobalSortingMenu(plugin,menu);
+   return original.apply(menu,args);
+  }):()=>{};
 
  const scan=()=>{
+  if(!session.active)return;
   const patterns=writerV91FlexPatterns(cfg);
   for(const leaf of plugin.app.workspace.getLeavesOfType?.('file-explorer')||[]){
    const host=leaf.view?.containerEl;if(!host)continue;
@@ -19872,7 +20144,7 @@ function writerV91FlexRegister(plugin){
    }else leaf.view._writerV1202SpaceRoot='';
    const nativePatched=patchView(leaf.view);
    const groups=host.querySelectorAll('.nav-files-container, .nav-folder-children, .nav-files-container > div');
-   for(const group of groups)writerV91FlexSortGroup(plugin,group,patterns,nativePatched);
+   for(const group of groups)writerV91FlexSortGroup(plugin,group,patterns,nativePatched,leaf.view);
    // Sync items even if their native wrapper differs from older Obsidian DOM.
    for(const node of host.querySelectorAll('.nav-file, .nav-folder, .tree-item')){
     const path=writerV91FlexNodePath(node,leaf.view);
@@ -19883,20 +20155,28 @@ function writerV91FlexRegister(plugin){
     node.classList.toggle('writer-v1202-space-root',visibility.scope==='root');
     node.classList.toggle('writer-v91-flex-hidden',hidden);
     node.classList.toggle('writer-v91-flex-revealed',cfg.enabled&&!hidden&&visibility.rule&&visibility.scope!=='excluded');
-    if(hidden){node.dataset.writerFlexConcealed='true';node.style.setProperty('display','none','important');}
-    else if(node.dataset.writerFlexConcealed==='true'){delete node.dataset.writerFlexConcealed;node.style.removeProperty('display');}
+    writerV16FlexConceal(node,hidden);
    }
   }
  };
- const refresh=()=>{
-  clearTimeout(timer);timer=setTimeout(()=>{
+ let generation=0,needsSort=false;
+ const schedule=(sort,delay)=>{
+  if(!session.active)return;
+  needsSort=needsSort||sort;
+  clearTimeout(timer);
+  const current=++generation;
+  timer=setTimeout(()=>{
+   if(!session.active||current!==generation)return;
+   timer=null;
+   const sortNow=needsSort;needsSort=false;
    scan();
-   for(const leaf of plugin.app.workspace.getLeavesOfType?.('file-explorer')||[]){
+   if(sortNow&&session.active)for(const leaf of plugin.app.workspace.getLeavesOfType?.('file-explorer')||[]){
     if(active()&&cfg.nativeSortIntegration)try{leaf.view?.sort?.();}catch(_){}
    }
-  },100);
+  },delay);
  };
- const refreshDom=()=>{clearTimeout(timer);timer=setTimeout(scan,90);};
+ const refresh=()=>schedule(true,100);
+ const refreshDom=()=>schedule(false,90);
  plugin.writerV91FlexRefresh=refresh;
  const menu=(menu,file)=>{
   if(!active()||!(file instanceof TFile||file instanceof TFolder))return;
@@ -19939,6 +20219,7 @@ function writerV91FlexRegister(plugin){
  plugin.registerEvent(plugin.app.workspace.on('layout-change',refresh));
  plugin.registerEvent(plugin.app.vault.on('create',refresh));
  plugin.registerEvent(plugin.app.vault.on('delete',file=>{
+  if(!session.active)return;
   const old=file.path;cfg.pinned=cfg.pinned.filter(path=>path!==old&&!path.startsWith(old+'/'));
   cfg.hidden=cfg.hidden.filter(path=>path!==old&&!path.startsWith(old+'/'));
   for(const space of plugin.settings.v9Spaces?.spaces||[]){
@@ -19950,6 +20231,7 @@ function writerV91FlexRegister(plugin){
   void plugin.saveSettings();refresh();
  }));
  plugin.registerEvent(plugin.app.vault.on('rename',(file,old)=>{
+  if(!session.active)return;
   const swap=p=>p===old||p.startsWith(old+'/')?file.path+p.slice(old.length):p;
   cfg.pinned=cfg.pinned.map(swap);cfg.hidden=cfg.hidden.map(swap);
   for(const space of plugin.settings.v9Spaces?.spaces||[]){
@@ -19986,7 +20268,7 @@ function writerV91FlexRegister(plugin){
   event.stopImmediatePropagation?.();event.stopPropagation();
  };
  const over=event=>{
-  if(!lastDrag)return;
+  if(!session.active||!lastDrag)return;
   const node=event.target?.closest?.('.nav-file, .nav-folder');
   const target=node&&writerV91FlexNodePath(node,plugin.app.workspace.getLeavesOfType?.('file-explorer')?.[0]?.view);
   const a=plugin.app.vault.getAbstractFileByPath(lastDrag),b=plugin.app.vault.getAbstractFileByPath(target||'');
@@ -19999,7 +20281,7 @@ function writerV91FlexRegister(plugin){
   }
  };
  const drop=event=>{
-  if(!lastDrag)return;
+  if(!session.active||!lastDrag)return;
   const node=event.target?.closest?.('.nav-file, .nav-folder');
   const target=node&&writerV91FlexNodePath(node,plugin.app.workspace.getLeavesOfType?.('file-explorer')?.[0]?.view),source=lastDrag;
   const side=dropNode?.dataset.writerFlexDrop==='after'?'after':'before';
@@ -20016,10 +20298,12 @@ function writerV91FlexRegister(plugin){
  plugin.registerDomEvent?.(container,'drop',drop,true);
  plugin.registerDomEvent?.(container,'dragend',end,true);
  const attach=()=>{
+  if(!session.active)return;
   observer?.disconnect();if(typeof MutationObserver==='undefined'){refresh();return;}
-  observer=new MutationObserver(records=>{
-   if(records.some(record=>record.addedNodes.length||record.removedNodes.length))refreshDom();
+  const next=new MutationObserver(records=>{
+   if(session.active&&observer===next&&records.some(record=>record.addedNodes.length||record.removedNodes.length))refreshDom();
   });
+  observer=next;
   for(const leaf of plugin.app.workspace.getLeavesOfType?.('file-explorer')||[]){
    if(leaf.view?.containerEl)observer.observe(leaf.view.containerEl,{childList:true,subtree:true});
   }
@@ -20047,18 +20331,25 @@ function writerV91FlexRegister(plugin){
   cfg.showHidden=!cfg.showHidden;await plugin.saveSettings();refresh();
  }});
  plugin.register?.(()=>{
-  clearTimeout(timer);observer?.disconnect();
-  for(const [owner,entry] of patched){
-   if(owner.getSortedFolderItems===entry.adapter)owner.getSortedFolderItems=entry.previous;
-   if(entry.wrappedSet&&entry.setOwner?.setSortOrder===entry.wrappedSet)
-    entry.setOwner.setSortOrder=entry.originalSet;
-  }
-  if(menuPrototype&&wrappedMenuShow&&menuPrototype.showAtMouseEvent===wrappedMenuShow)
-   menuPrototype.showAtMouseEvent=originalMenuShow;
-  patched.clear();
+  if(!session.active)return;
+  session.active=false;
+  if(writerV16FlexSessions.get(plugin)===session)writerV16FlexSessions.delete(plugin);
+  ++generation;clearTimeout(timer);timer=null;needsSort=false;
+  observer?.disconnect();observer=null;end();
+  for(const dispose of sortSetters.values())dispose();
+  for(const dispose of patched.values())dispose();
+  disposeMenu();
+  patched.clear();sortSetters.clear();
   for(const leaf of plugin.app.workspace.getLeavesOfType?.('file-explorer')||[]){
    const host=leaf.view?.containerEl;if(!host)continue;
-   host.classList?.remove?.('writer-v1047-mobile-reorder-on');
+   host.classList?.remove?.('writer-v1047-mobile-reorder-on','writer-v1202-space-scoped');
+   delete leaf.view._writerV1202SpaceRoot;
+   for(const node of host.querySelectorAll('.writer-v1202-space-ancestor, .writer-v1202-space-root, .writer-v91-flex-hidden, .writer-v91-flex-revealed, .writer-v91-flex-pinned, [data-writer-flex-concealed="true"]')){
+    node.classList.remove('writer-v1202-space-ancestor','writer-v1202-space-root','writer-v91-flex-hidden','writer-v91-flex-revealed','writer-v91-flex-pinned');
+    writerV16FlexConceal(node,false);
+   }
+   host.querySelectorAll?.('.writer-v91-flex-indicator')?.forEach?.(node=>node.remove?.());
+   for(const title of host.querySelectorAll('[data-writer-flex-path]'))writerV16FlexDraggable(title,false);
    host.querySelectorAll?.('.writer-v93-reorder-actions')?.forEach?.(node=>node.remove?.());
    host.querySelectorAll?.('.writer-v1047-reorder-title')?.forEach?.(node=>node.classList?.remove?.('writer-v1047-reorder-title'));
    for(const container of host.querySelectorAll('[data-writer-flex-order-host="1"]')){
@@ -20072,8 +20363,8 @@ function writerV91FlexRegister(plugin){
     node.style.removeProperty('order');delete node.dataset.writerFlexOrdered;
    }
   }
-  plugin.writerV91FlexRefresh=null;
-  plugin.writerV91FlexToggleMobileReorder=null;
+  if(plugin.writerV91FlexRefresh===refresh)plugin.writerV91FlexRefresh=null;
+  if(plugin.writerV91FlexToggleMobileReorder===toggleMobile)plugin.writerV91FlexToggleMobileReorder=null;
   plugin.writerV91FlexMobileSortActive=false;
  });
 }
@@ -20217,8 +20508,8 @@ function writerV912VirtualMatch(rule,file,cache){
  if(!rule||rule.enabled===false||!file||file.extension!=='md')return false;
  const conditions=Array.isArray(rule.conditions)?rule.conditions:[];
  if(!conditions.length)return false;
- const results=conditions.map(c=>writerV912VirtualConditionMatch(c,file,cache));
- return rule.match==='any'?results.some(Boolean):results.every(Boolean);
+ const matches=c=>writerV912VirtualConditionMatch(c,file,cache);
+ return rule.match==='any'?conditions.some(matches):conditions.every(matches);
 }
 function writerV912HasBookNavRule(plugin,filePath){
  const cfg=plugin?.settings?.v912Virtual;
@@ -20361,7 +20652,8 @@ class WriterV912VirtualContent{
   const ticket=++this.generation;
   if(!this.active()){this.clearAll();this.renderSidebar();return;}
   const leaves=this.plugin.app.workspace.getLeavesOfType?.('markdown')||[];
-  for(const leaf of this.mounted.keys())if(!leaves.includes(leaf))this.clear(leaf);
+  const liveLeaves=new Set(leaves);
+  for(const leaf of this.mounted.keys())if(!liveLeaves.has(leaf))this.clear(leaf);
   await Promise.all(leaves.map(leaf=>this.renderLeaf(leaf,ticket)));
   if(ticket===this.generation)this.renderSidebar();
  }
@@ -20373,7 +20665,7 @@ class WriterV912VirtualContent{
  async renderLeaf(leaf,ticket){
   const view=leaf.view,file=view?.file;
   if(!(file instanceof TFile)||file.extension!=='md'){this.clear(leaf);return;}
-  const reading=view.getMode?.()==='preview',source=view.getMode?.()==='source';
+  const mode=view.getMode?.(),reading=mode==='preview',source=mode==='source';
   if(!reading&&!source){this.clear(leaf);return;}
   if(source&&!this.cfg.showLivePreview){this.clear(leaf);return;}
   const root=reading?view.previewMode?.containerEl?.querySelector?.('.markdown-preview-sizer'):
@@ -21670,11 +21962,12 @@ function writerV92ZoteroIsSource(plugin,file){
  if(!(file instanceof TFile)||file.extension!=='md')return false;
  const cfg=plugin.settings.v92Research;
  const path=file.path.toLocaleLowerCase(),folder=cfg.zoteroFolder.toLocaleLowerCase();
+ if(folder&&(path.startsWith(folder+'/')||path===folder+'.md'))return true;
  const cache=plugin.app.metadataCache?.getFileCache?.(file);
  const tags=[...(cache?.tags||[]).map(x=>x.tag),...(Array.isArray(cache?.frontmatter?.tags)?cache.frontmatter.tags:[cache?.frontmatter?.tags])]
   .filter(Boolean).map(x=>String(x).replace(/^#/,'').toLocaleLowerCase());
- return (folder&&(path.startsWith(folder+'/')||path===folder+'.md'))||
-  tags.some(tag=>tag===cfg.zoteroTag.toLocaleLowerCase()||tag.startsWith(cfg.zoteroTag.toLocaleLowerCase()+'/'));
+ const target=cfg.zoteroTag.toLocaleLowerCase();
+ return tags.some(tag=>tag===target||tag.startsWith(target+'/'));
 }
 function writerV92ZoteroExtract(plugin,file,text){
  const cache=plugin.app.metadataCache?.getFileCache?.(file);
@@ -21712,7 +22005,12 @@ function writerV92ZoteroExtract(plugin,file,text){
 async function writerV92ZoteroQuotes(plugin,limit=180){
  const cfg=plugin.settings.v92Research;
  if(!cfg.enabled||!cfg.zoteroQuotes||!writerModuleOn(plugin,'zoteroIntegration'))return [];
- const files=(plugin.app.vault.getMarkdownFiles?.()||[]).filter(file=>writerV92ZoteroIsSource(plugin,file)).slice(0,240);
+ const files=[];
+ for(const file of plugin.app.vault.getMarkdownFiles?.()||[]){
+  if(!writerV92ZoteroIsSource(plugin,file))continue;
+  files.push(file);
+  if(files.length===240)break;
+ }
  const quotes=[];
  for(const file of files){
   try{
@@ -23819,8 +24117,7 @@ async function writerV10BookSaveState(plugin,project,record){
  cfg.library[project.file.path]=writerV10BookRecord(record);
  await plugin.saveSettings();
 }
-function writerV10BookshelfProjects(plugin){
- const files=plugin.app.vault.getMarkdownFiles?.()||[];
+function writerV10BookshelfProjects(plugin,files=plugin.app.vault.getMarkdownFiles?.()||[]){
  const longform=files.map(file=>typeof longformIndex==='function'?longformIndex(file,plugin.app):null).filter(Boolean);
  const indexed=new Set(longform.map(p=>p.file.path));
  const standalone=(plugin.settings.v10Bookshelf?.standalone||[])
@@ -24021,10 +24318,10 @@ function writerV10OpenBookshelf(plugin){
  modal.onOpen=()=>{modal.contentEl.empty();writerV10RenderBookshelf(plugin,modal.contentEl);};
  modal.open();
 }
-function writerV10RenderBookshelfWidget(view,parent){
+function writerV10RenderBookshelfWidget(view,parent,files){
  const plugin=view.plugin,wrapper=parent.createDiv({cls:'writer-v108-books-widget'});
  const toolbar=wrapper.createDiv({cls:'writer-v108-books-widget-toolbar'});
- const projects=writerV10BookshelfProjects(plugin);
+ const projects=writerV10BookshelfProjects(plugin,files);
  toolbar.createSpan({text:projects.length+' '+writerUi('livros','books')});
  toolbar.createEl('button',{text:writerUi('Ver biblioteca','View library'),attr:{type:'button'}})
   .addEventListener('click',()=>writerV10OpenBookshelf(plugin));
@@ -24786,7 +25083,14 @@ async function writerV101ExportCsv(plugin,table,sourceFile){
 
 /* Reading progress is derived from the current reading pane, never from book/chapter counts. */
 function writerV101ReadingProgressRegister(plugin){
+ if(plugin._writerReadingProgressSession)return;
+ const session={stopped:false};
+ plugin._writerReadingProgressSession=session;
+ const workspace=plugin.app.workspace;
+ let frame=null,frameView=null,queued=false,fileTimer=null;
+ const active=()=>!session.stopped&&plugin._writerReadingProgressSession===session;
  const refresh=()=>{
+  if(!active())return;
   const enabled=plugin.settings.v101Suite?.enabled&&plugin.settings.v101Suite.readingProgress!==false;
   for(const leaf of plugin.app.workspace.getLeavesOfType?.('markdown')||[]){
    const host=leaf.view?.containerEl;
@@ -24795,7 +25099,7 @@ function writerV101ReadingProgressRegister(plugin){
    const old=pane.querySelector(':scope > .writer-v101-reading-track');
    const scroller=[...host.querySelectorAll('.markdown-source-view .cm-scroller, .markdown-preview-view, .cm-scroller')]
     .find(el=>el.isConnected&&el.getBoundingClientRect().height>5&&el.getBoundingClientRect().width>5);
-   if(!enabled||!scroller){old?.remove();continue;}
+   if(!enabled||!scroller){old?.remove();pane.classList.remove('writer-v101-reading-pane');continue;}
    if(pane.ownerDocument?.defaultView?.getComputedStyle(pane).position==='static')pane.classList.add('writer-v101-reading-pane');
    let track=old;
    if(!track){
@@ -24819,19 +25123,41 @@ function writerV101ReadingProgressRegister(plugin){
    track.firstElementChild.style.width=value+'%';
   }
  };
- const throttled=()=>{if(plugin._writerReadingProgressRaf)return;
-  plugin._writerReadingProgressRaf=true;
-  const view=plugin.app.workspace.containerEl?.ownerDocument?.defaultView;
-  (view?.requestAnimationFrame||((fn)=>fn()))(()=>{plugin._writerReadingProgressRaf=false;refresh();});
+ const throttled=()=>{
+  if(!active()||queued)return;
+  const view=workspace.containerEl?.ownerDocument?.defaultView;
+  if(typeof view?.requestAnimationFrame!=='function'){refresh();return;}
+  queued=true;frameView=view;
+  frame=view.requestAnimationFrame(()=>{
+   frame=null;frameView=null;queued=false;
+   if(active())refresh();
+  });
  };
- plugin.registerDomEvent?.(plugin.app.workspace.containerEl,'scroll',throttled,true);
- plugin.registerEvent(plugin.app.workspace.on('active-leaf-change',throttled));
- plugin.registerEvent(plugin.app.workspace.on('layout-change',throttled));
- plugin.registerEvent(plugin.app.workspace.on('file-open',()=>{throttled();setTimeout(throttled,140);}));
- plugin.registerEvent(plugin.app.workspace.on('editor-change',throttled));
- plugin.app.workspace.onLayoutReady?.(throttled);
+ const onFile=()=>{
+  if(!active())return;
+  throttled();
+  if(fileTimer!==null)clearTimeout(fileTimer);
+  fileTimer=setTimeout(()=>{fileTimer=null;if(active())throttled();},140);
+ };
+ plugin.registerDomEvent?.(workspace.containerEl,'scroll',throttled,true);
+ plugin.registerEvent(workspace.on('active-leaf-change',throttled));
+ plugin.registerEvent(workspace.on('layout-change',throttled));
+ plugin.registerEvent(workspace.on('file-open',onFile));
+ plugin.registerEvent(workspace.on('editor-change',throttled));
  plugin.writerV101ReadingProgressRefresh=throttled;
- plugin.register?.(()=>{for(const el of plugin.app.workspace.containerEl.querySelectorAll('.writer-v101-reading-track'))el.remove();for(const el of plugin.app.workspace.containerEl.querySelectorAll('.writer-v101-reading-pane'))el.classList.remove('writer-v101-reading-pane');});
+ plugin.register?.(()=>{
+  if(session.stopped)return;
+  session.stopped=true;
+  if(fileTimer!==null)clearTimeout(fileTimer);
+  if(frame!==null)frameView?.cancelAnimationFrame?.(frame);
+  fileTimer=null;frame=null;frameView=null;queued=false;
+  if(plugin._writerReadingProgressSession!==session)return;
+  delete plugin._writerReadingProgressSession;
+  if(plugin.writerV101ReadingProgressRefresh===throttled)delete plugin.writerV101ReadingProgressRefresh;
+  for(const el of workspace.containerEl.querySelectorAll('.writer-v101-reading-track'))el.remove();
+  for(const el of workspace.containerEl.querySelectorAll('.writer-v101-reading-pane'))el.classList.remove('writer-v101-reading-pane');
+ });
+ workspace.onLayoutReady?.(throttled);
 }
 
 function writerV101RegisterEnhancements(plugin){
@@ -25915,9 +26241,9 @@ function writerV10RenderReadingWidget(view,parent){
   detail.createEl('p',{text:words+' '+writerUi('palavras','words')+' · '+headings+' '+writerUi('títulos','headings')+' · ~'+minutes+' min'});
  }).catch(()=>{if(detail.isConnected)detail.setText(writerUi('Não foi possível ler esta nota.','Could not read this note.'));});
 }
-function writerV10RenderZoteroWidget(view,parent){
+function writerV10RenderZoteroWidget(view,parent,markdownFiles=view.app.vault.getMarkdownFiles?.()||[]){
  const host=view.card(parent,'zotero','Biblioteca Zotero','Zotero library');
- const files=(view.app.vault.getMarkdownFiles?.()||[]).filter(file=>typeof writerV92ZoteroIsSource==='function'&&writerV92ZoteroIsSource(view.plugin,file));
+ const files=markdownFiles.filter(file=>typeof writerV92ZoteroIsSource==='function'&&writerV92ZoteroIsSource(view.plugin,file));
  host.createEl('p',{text:files.length+' '+writerUi('notas importadas','imported notes')});
  const cite=host.createEl('button',{text:writerUi('Inserir citação…','Insert citation…')});
  cite.addEventListener('click',()=>writerV10ZoteroPicker(view.plugin));
@@ -25971,8 +26297,14 @@ function writerV10ZoteroPicker(plugin){
  modal.open();
 }
 function writerV10ZoteroImportedReferences(plugin){
- const files=(plugin.app.vault.getMarkdownFiles?.()||[]).filter(file=>typeof writerV92ZoteroIsSource==='function'&&writerV92ZoteroIsSource(plugin,file)).slice(0,500);
- return files.map(file=>writerV10ZoteroRef(plugin,file));
+ if(typeof writerV92ZoteroIsSource!=='function')return [];
+ const references=[];
+ for(const file of plugin.app.vault.getMarkdownFiles?.()||[]){
+  if(!writerV92ZoteroIsSource(plugin,file))continue;
+  references.push(writerV10ZoteroRef(plugin,file));
+  if(references.length===500)break;
+ }
+ return references;
 }
 async function writerV10ZoteroReferences(plugin,imported=writerV10ZoteroImportedReferences(plugin)){
  try{
@@ -26075,7 +26407,8 @@ function writerV106HomeSessionStore(plugin){
  try{return plugin.app.workspace?.containerEl?.ownerDocument?.defaultView?.sessionStorage||null;}
  catch(error){return null;}
 }
-async function writerV106HomeCleanup(plugin,open,force=false){
+async function writerV106HomeCleanup(plugin,open,force=false,isActive=()=>true){
+ if(!isActive())return false;
  const workspace=plugin.app.workspace;
  const cfg=plugin.settings?.v8Finish;
  if((!force&&!cfg?.homeCleanStart)||!writerModuleOn(plugin,'writingHome'))return false;
@@ -26084,26 +26417,39 @@ async function writerV106HomeCleanup(plugin,open,force=false){
  workspace.iterateRootLeaves(leaf=>{
   if(leaf&&typeof leaf.setViewState==='function'&&typeof leaf.detach==='function'&&!roots.includes(leaf))roots.push(leaf);
  });
- if(!roots.length){await open();return true;}
+ if(!roots.length){await open();return isActive();}
  const keep=writerV106HomeChooseLeaf(roots,workspace.activeLeaf,WRITER_V8_HOME_VIEW);
  if(!keep)return false;
  // If activation fails, do not close ANY restored tab.
  try{
   if(keep.getViewState?.()?.type!==WRITER_V8_HOME_VIEW)
    await keep.setViewState({type:WRITER_V8_HOME_VIEW,active:true});
-  if(keep.getViewState?.()?.type!==WRITER_V8_HOME_VIEW)return false;
+  if(!isActive()||keep.getViewState?.()?.type!==WRITER_V8_HOME_VIEW)return false;
  }catch(error){console.warn('[Basic AI] fresh homepage:',error);return false;}
  let closed=0;
  for(const leaf of roots){
+  if(!isActive())return false;
   if(leaf===keep)continue;
   try{leaf.detach();closed++;}
   catch(error){console.warn('[Basic AI] restored tab cleanup:',error);}
  }
+ if(!isActive())return false;
  try{workspace.setActiveLeaf?.(keep,{focus:false});}catch(error){console.warn('[Basic AI] activate homepage:',error);}
  plugin._writerV106HomeClosedRestored=closed;
  return true;
 }
 function writerV106HomeRegisterStartup(plugin,open){
+ if(plugin._writerV106HomeStartupSession)return;
+ const session={stopped:false,begun:false};
+ plugin._writerV106HomeStartupSession=session;
+ const isActive=()=>!session.stopped&&plugin._writerV106HomeStartupSession===session;
+ plugin.register?.(()=>{
+  session.stopped=true;
+  if(plugin._writerV106HomeStartupSession===session){
+   plugin._writerV106HomeStarting=false;
+   delete plugin._writerV106HomeStartupSession;
+  }
+ });
  const workspace=plugin.app.workspace;
  const wasReady=workspace.layoutReady===true;
  const storage=writerV106HomeSessionStore(plugin);
@@ -26114,22 +26460,27 @@ function writerV106HomeRegisterStartup(plugin,open){
  const policy=writerV106HomeStartupPolicy(plugin.settings?.v8Finish,wasReady,seen);
  plugin._writerV106HomeStarting=true;
  const begin=async()=>{
+  if(!isActive()||session.begun)return;
+  session.begun=true;
   try{
    if(policy==='clean'){
     try{storage?.setItem(key,'1');}catch(_){}
-    await writerV106HomeCleanup(plugin,open);
+    await writerV106HomeCleanup(plugin,open,false,isActive);
    }else if(!wasReady&&!seen&&plugin.settings?.v8Finish?.homeAtStartup&&writerModuleOn(plugin,'writingHome')){
     try{storage?.setItem(key,'1');}catch(_){}
     await open();
    }
   }finally{
-   plugin._writerV106HomeStarting=false;
-   plugin._writerV106HomeStarted=true;
+   if(isActive()){
+    plugin._writerV106HomeStarting=false;
+    plugin._writerV106HomeStarted=true;
+   }
   }
  };
  if(typeof workspace.onLayoutReady==='function')workspace.onLayoutReady(()=>void begin().catch(error=>console.warn('[Basic AI] startup homepage:',error)));
  else{plugin._writerV106HomeStarting=false;plugin._writerV106HomeStarted=true;}
  plugin.addCommand?.({id:'v106-clean-home-now',name:writerUi('Homepage: limpar abas e recomeçar','Homepage: close tabs and start fresh'),callback:()=>{
+  if(!isActive())return;
   const modal=new Modal(plugin.app);
   modal.setTitle(writerUi('Fechar todas as abas principais?','Close all main tabs?'));
   modal.onOpen=()=>{
@@ -26137,7 +26488,7 @@ function writerV106HomeRegisterStartup(plugin,open){
    const actions=modal.contentEl.createDiv({cls:'writer-v10-discovery-actions'});
    actions.createEl('button',{text:writerUi('Cancelar','Cancel')}).addEventListener('click',()=>modal.close());
    actions.createEl('button',{text:writerUi('Fechar abas','Close tabs'),cls:'mod-warning'}).addEventListener('click',()=>{
-    modal.close();void writerV106HomeCleanup(plugin,open,true);
+    modal.close();if(isActive())void writerV106HomeCleanup(plugin,open,true,isActive);
    });
   };modal.open();
  }});
@@ -26914,7 +27265,7 @@ function writerV107ZoteroMarkdown(entry){
   '> [!info] Zotero','> '+entry.key,''];
  return lines.join('\n');
 }
-async function writerV107ZoteroRequest(plugin,key,url){
+async function writerV107ZoteroRequest(key,url){
  if(!/^https:\/\/api\.zotero\.org\/(?:users|groups)\/\d+\/items\/top\?/.test(url))throw Error('Untrusted Zotero URL');
  const req=require('obsidian').requestUrl;
  const headers={'Zotero-API-Version':'3','Accept':'application/json'};
@@ -26926,14 +27277,15 @@ async function writerV107ZoteroRequest(plugin,key,url){
  if(String(res.text||'').length>3000000)throw Error('Zotero response too large');
  return res;
 }
-async function writerV107ZoteroRead(plugin,key,format='json'){
- const cfg=writerV107ZoteroConfig(plugin.settings);
+async function writerV107ZoteroRead(key,format,cfg,isCurrent){
  if(!cfg.enabled)throw Error(writerUi('Ative a integração Zotero nas configurações.','Enable Zotero integration in settings.'));
  if(!cfg.libraryId)throw Error(writerUi('Informe o ID numérico da biblioteca.','Enter the numeric library ID.'));
  let data=[];
  for(let start=0;start<cfg.maxItems;start+=100){
-  const response=await writerV107ZoteroRequest(plugin,key,writerV107ZoteroUrl(cfg,start,format));
-  const batch=format==='json'?(Array.isArray(response.json)?response.json:[]):(Array.isArray(response.json)?response.json:[]);
+  if(!isCurrent())return null;
+  const response=await writerV107ZoteroRequest(key,writerV107ZoteroUrl(cfg,start,format));
+  if(!isCurrent())return null;
+  const batch=Array.isArray(response.json)?response.json:[];
   data.push(...batch.slice(0,cfg.maxItems-data.length));
   if(batch.length<100)break;
  }
@@ -26948,70 +27300,140 @@ function writerV107ZoteroCsl(item){
   URL:entry.url||undefined,'container-title':d.publicationTitle||undefined,volume:d.volume||undefined,issue:d.issue||undefined,
   page:d.pages||undefined,publisher:d.publisher||undefined};
 }
-async function writerV107ZoteroEnsureFolder(plugin,path){
- const parts=path.split('/').filter(Boolean);let current='';
- for(const p of parts){current=current?current+'/'+p:p;if(!plugin.app.vault.getAbstractFileByPath(current))await plugin.app.vault.createFolder(current);}
+const writerV16ZoteroSessions=new WeakMap();
+function writerV16ZoteroSession(plugin,renew=false){
+ const previous=writerV16ZoteroSessions.get(plugin);
+ if(previous&&(!previous.stopped||!renew))return previous;
+ const session={modals:new Set(),revision:0,stopped:false};
+ writerV16ZoteroSessions.set(plugin,session);
+ plugin.register(()=>{
+  session.stopped=true;
+  for(const modal of session.modals)modal.close();
+  session.modals.clear();
+ });
+ return session;
 }
-async function writerV107ZoteroImport(plugin,raw){
- const cfg=plugin.settings.v107Zotero,all=raw.map(writerV107ZoteroNormalize).filter(x=>x&&x.type!=='attachment'&&x.type!=='note');
- const modal=new Modal(plugin.app);modal.setTitle(writerUi('Importar referências do Zotero','Import Zotero references'));
+function writerV16ZoteroModal(plugin,title){
+ const session=writerV16ZoteroSession(plugin);
+ if(session.stopped)return null;
+ const modal=new Modal(plugin.app);
+ modal.setTitle(title);
+ session.modals.add(modal);
+ modal.onClose=()=>{session.modals.delete(modal);};
+ return {modal,session,isOpen:()=>!session.stopped&&session.modals.has(modal)};
+}
+async function writerV107ZoteroEnsureFolder(plugin,path,isCurrent){
+ const parts=path.split('/').filter(Boolean);let current='';
+ for(const part of parts){
+  if(!isCurrent())return;
+  current=current?current+'/'+part:part;
+  if(!plugin.app.vault.getAbstractFileByPath(current))await plugin.app.vault.createFolder(current);
+ }
+}
+function writerV107ZoteroImport(plugin,raw,cfg,isLibraryCurrent){
+ const all=raw.map(writerV107ZoteroNormalize).filter(x=>x&&x.type!=='attachment'&&x.type!=='note');
+ const view=writerV16ZoteroModal(plugin,writerUi('Importar referências do Zotero','Import Zotero references'));
+ if(!view)return;
+ const {modal,isOpen}=view;
+ const isCurrent=()=>isOpen()&&isLibraryCurrent();
+ let busy=false;
  modal.onOpen=()=>{
   modal.contentEl.createEl('p',{text:all.length+' '+writerUi('referências encontradas. Notas existentes não serão sobrescritas.','references found. Existing notes will not be overwritten.')});
-  const previews=modal.contentEl.createEl('small',{text:all.slice(0,6).map(x=>x.title).join('\n'),cls:'writer-v101-ics-preview'});
+  modal.contentEl.createEl('small',{text:all.slice(0,6).map(x=>x.title).join('\n'),cls:'writer-v101-ics-preview'});
   new Setting(modal.contentEl).addButton(btn=>btn.setButtonText(writerUi('Criar notas','Create notes')).setCta().onClick(async()=>{
+   if(busy||!isCurrent())return;
+   busy=true;
    btn.setDisabled(true);let count=0;
    try{
-    await writerV107ZoteroEnsureFolder(plugin,cfg.folder);
+    await writerV107ZoteroEnsureFolder(plugin,cfg.folder,isCurrent);
     for(const entry of all){
+     if(!isCurrent())return;
      const path=cfg.folder+'/'+entry.key+'.md';
      if(plugin.app.vault.getAbstractFileByPath(path))continue;
      await plugin.app.vault.create(path,writerV107ZoteroMarkdown(entry));count++;
     }
+    if(!isCurrent())return;
     modal.close();new Notice(count+' '+writerUi('referências importadas.','references imported.'));
-   }catch(error){new Notice(String(error.message||error).slice(0,200));btn.setDisabled(false);}
+   }catch(error){
+    if(isCurrent())new Notice(String(error.message||error).slice(0,200));
+   }finally{
+    busy=false;
+    if(isOpen())btn.setDisabled(false);
+   }
   }));
  };
  modal.open();
 }
 function writerV107ZoteroPrompt(plugin,format='json'){
- const modal=new Modal(plugin.app);modal.setTitle(writerUi('Zotero Web API','Zotero Web API'));
- let key='';
+ const view=writerV16ZoteroModal(plugin,'Zotero Web API');
+ if(!view)return;
+ const {modal,session,isOpen}=view;
+ let input,busy=false;
+ const untrack=modal.onClose;
+ modal.onClose=()=>{untrack();if(input)input.value='';};
  modal.onOpen=()=>{
   modal.contentEl.createEl('p',{text:writerUi('Informe uma chave de API somente para esta solicitação (opcional para biblioteca pública). A chave não será salva. A consulta envia solicitações apenas ao api.zotero.org.','Enter a temporary API key (optional for public libraries). It is not saved. Requests go only to api.zotero.org.')});
-  const input=modal.contentEl.createEl('input',{attr:{type:'password',autocomplete:'off',placeholder:'Zotero API key'}});
-  input.addEventListener('input',()=>{key=input.value.slice(0,300);});
+  input=modal.contentEl.createEl('input',{attr:{type:'password',autocomplete:'off',placeholder:'Zotero API key'}});
   new Setting(modal.contentEl).addButton(btn=>btn.setButtonText(writerUi('Consultar biblioteca','Fetch library')).setCta().onClick(async()=>{
+   if(busy||!isOpen())return;
+   busy=true;
    btn.setDisabled(true);
+   const key=input.value.slice(0,300);
+   input.value='';
+   const cfg={...writerV107ZoteroConfig(plugin.settings)},revision=session.revision;
+   const isLibraryCurrent=()=>{
+    const current=plugin.settings.v107Zotero;
+    return session.revision===revision&&current&&current.enabled===cfg.enabled&&current.libraryType===cfg.libraryType&&
+     current.libraryId===cfg.libraryId&&current.folder===cfg.folder&&current.maxItems===cfg.maxItems;
+   };
+   const isCurrent=()=>isOpen()&&isLibraryCurrent();
    try{
-    const items=await writerV107ZoteroRead(plugin,key,format);
-    key='';input.value='';modal.close();
-    if(format==='json')writerV107ZoteroImport(plugin,items);
-    else{
+    const items=await writerV107ZoteroRead(key,format,cfg,isCurrent);
+    if(!items||!isCurrent())return;
+    if(format==='json'){
+     modal.close();
+     writerV107ZoteroImport(plugin,items,cfg,isLibraryCurrent);
+    }else{
      const entries=items.filter(item=>item&&typeof item==='object')
       .map(item=>item.id||item.type?item:writerV107ZoteroCsl(item)).filter(Boolean);
      const path='Zotero-csl-'+Date.now()+'.json';
      await plugin.app.vault.create(path,JSON.stringify(entries,null,2));
+     if(!isCurrent())return;
+     modal.close();
      new Notice(writerUi('Exportação CSL criada: ','CSL export created: ')+path);
     }
-   }catch(error){key='';input.value='';new Notice(String(error.message||error).slice(0,240));btn.setDisabled(false);}
+   }catch(error){
+    if(isCurrent())new Notice(String(error.message||error).slice(0,240));
+   }finally{
+    busy=false;
+    if(isOpen())btn.setDisabled(false);
+   }
   }));
  };
- modal.onClose=()=>{key='';};
  modal.open();
 }
 function writerV107ZoteroRegister(plugin){
+ const session=writerV16ZoteroSession(plugin,true);
  writerV107ZoteroConfig(plugin.settings);
- plugin.addCommand({id:'v107-zotero-web-import',name:writerUi('Zotero: importar biblioteca via API','Zotero: import library via API'),callback:()=>writerV107ZoteroPrompt(plugin)});
- plugin.addCommand({id:'v107-zotero-web-csl',name:writerUi('Zotero: exportar biblioteca CSL JSON','Zotero: export library to CSL JSON'),callback:()=>writerV107ZoteroPrompt(plugin,'csljson')});
+ const open=format=>{if(!session.stopped)writerV107ZoteroPrompt(plugin,format);};
+ plugin.addCommand({id:'v107-zotero-web-import',name:writerUi('Zotero: importar biblioteca via API','Zotero: import library via API'),callback:()=>open('json')});
+ plugin.addCommand({id:'v107-zotero-web-csl',name:writerUi('Zotero: exportar biblioteca CSL JSON','Zotero: export library to CSL JSON'),callback:()=>open('csljson')});
 }
 function writerV107ZoteroSettings(plugin,panel){
  const cfg=plugin.settings.v107Zotero;
+ const update=async (field,value)=>{
+  const session=writerV16ZoteroSessions.get(plugin);
+  if(session?.stopped||plugin.settings.v107Zotero!==cfg)return;
+  if(session&&value!==cfg[field])session.revision++;
+  cfg[field]=value;
+  await plugin.saveSettings();
+ };
  panel.createEl('h3',{text:writerUi('Zotero Web API (somente leitura)','Zotero Web API (read only)')});
- new Setting(panel).setName(writerUi('Ativar acesso à API','Enable API access')).addToggle(t=>t.setValue(cfg.enabled).onChange(async v=>{cfg.enabled=v;await plugin.saveSettings();}));
- new Setting(panel).setName(writerUi('Tipo de biblioteca','Library type')).addDropdown(d=>d.addOption('users',writerUi('Pessoal','User')).addOption('groups',writerUi('Grupo','Group')).setValue(cfg.libraryType).onChange(async v=>{cfg.libraryType=v;await plugin.saveSettings();}));
- new Setting(panel).setName(writerUi('ID numérico da biblioteca','Numeric library ID')).addText(t=>t.setValue(cfg.libraryId).setPlaceholder('1234567').onChange(async v=>{cfg.libraryId=/^\d{0,15}$/.test(v)?v:cfg.libraryId;await plugin.saveSettings();}));
- new Setting(panel).setName(writerUi('Pasta de importação','Imported notes folder')).addText(t=>t.setValue(cfg.folder).onChange(async v=>{if(/^[\p{L}\p{N} _\/-]{1,120}$/u.test(v)){cfg.folder=v;await plugin.saveSettings();}}));
- new Setting(panel).setName(writerUi('Itens por consulta','Max items per request')).addSlider(s=>s.setLimits(20,300,20).setDynamicTooltip().setValue(cfg.maxItems).onChange(async v=>{cfg.maxItems=v;await plugin.saveSettings();}));
+ new Setting(panel).setName(writerUi('Ativar acesso à API','Enable API access')).addToggle(t=>t.setValue(cfg.enabled).onChange(v=>update('enabled',v)));
+ new Setting(panel).setName(writerUi('Tipo de biblioteca','Library type')).addDropdown(d=>d.addOption('users',writerUi('Pessoal','User')).addOption('groups',writerUi('Grupo','Group')).setValue(cfg.libraryType).onChange(v=>update('libraryType',v)));
+ new Setting(panel).setName(writerUi('ID numérico da biblioteca','Numeric library ID')).addText(t=>t.setValue(cfg.libraryId).setPlaceholder('1234567').onChange(v=>update('libraryId',/^\d{0,15}$/.test(v)?v:cfg.libraryId)));
+ new Setting(panel).setName(writerUi('Pasta de importação','Imported notes folder')).addText(t=>t.setValue(cfg.folder).onChange(async v=>{if(/^[\p{L}\p{N} _\/-]{1,120}$/u.test(v))await update('folder',v);}));
+ new Setting(panel).setName(writerUi('Itens por consulta','Max items per request')).addSlider(s=>s.setLimits(20,300,20).setDynamicTooltip().setValue(cfg.maxItems).onChange(v=>update('maxItems',v)));
  new Setting(panel).setName(writerUi('Buscar referências','Fetch references')).addButton(b=>b.setButtonText(writerUi('Conectar','Connect')).onClick(()=>writerV107ZoteroPrompt(plugin)));
 }
 
@@ -27115,6 +27537,19 @@ function writerV107StudySettings(plugin,panel){
 
 // v3 module: src/v10/calendar-feeds.js
 /* Optional HTTPS iCalendar subscriptions. Read-only upstream, append-only local imports. */
+const writerV107CalendarSessions=new WeakMap();
+function writerV107CalendarSession(plugin,renew=false){
+ const previous=writerV107CalendarSessions.get(plugin);
+ if(previous&&(!previous.closed||!renew))return previous;
+ const session={closed:false,registered:false,run:null,revision:0,automaticRevision:0,lastAutomatic:null,stopInterval:null};
+ writerV107CalendarSessions.set(plugin,session);
+ plugin.register?.(()=>{
+  session.closed=true;
+  session.stopInterval?.();
+  session.stopInterval=null;
+ });
+ return session;
+}
 function writerV107CalendarConfig(settings){
  const old=settings.v107Feeds&&typeof settings.v107Feeds==='object'&&!Array.isArray(settings.v107Feeds)?settings.v107Feeds:{};
  const urls=Array.isArray(old.urls)?Array.from(old.urls.slice(0,5),value=>typeof value==='string'?value:''):[];
@@ -27136,68 +27571,117 @@ function writerV107CalendarHash(value){
  for(const ch of String(value)){hash=Math.imul(hash^ch.charCodeAt(0),16777619);}
  return (hash>>>0).toString(36);
 }
-async function writerV107CalendarFetch(plugin,url){
+async function writerV107CalendarFetch(url){
  const safe=writerV107CalendarUrl(url);if(!safe)throw Error('Invalid HTTPS iCalendar feed URL');
  const res=await require('obsidian').requestUrl({url:safe,headers:{Accept:'text/calendar'},method:'GET',throw:false});
  if(res.status!==200)throw Error('iCalendar returned HTTP '+res.status);
  if(String(res.text||'').length>1000000)throw Error('iCalendar feed too large');
  return res.text;
 }
-async function writerV107CalendarSynchronize(plugin,quiet=false){
- const cfg=writerV107CalendarConfig(plugin.settings);
- if(!cfg.enabled)return {imported:0,skipped:0,errors:0};
+async function writerV107CalendarImport(plugin,run,current){
  let imported=0,skipped=0,errors=0;
- const folder=WRITER_V83_CAL_FOLDER;
- if(!plugin.app.vault.getAbstractFileByPath(folder))await plugin.app.vault.createFolder(folder);
- for(const url of cfg.urls.slice(0,5)){
+ const folder=WRITER_V83_CAL_FOLDER,vault=plugin.app.vault;
+ if(!vault.getAbstractFileByPath(folder))await vault.createFolder(folder);
+ for(const url of run.urls){
+  if(!current())break;
   if(!url)continue;
   if(!writerV107CalendarUrl(url)){errors++;continue;}
   try{
-   const items=writerV101IcsParse(await writerV107CalendarFetch(plugin,url),cfg.maxEvents);
+   const response=await writerV107CalendarFetch(url);
+   if(!current())break;
+   const items=writerV101IcsParse(response,run.maxEvents);
    const prefix='feed-'+writerV107CalendarHash(url)+'-';
    for(const event of items){
+    if(!current())break;
     const valid=writerV83CalValid(event);if(!valid){skipped++;continue;}
     const id=writerV107CalendarHash(String(event.uid||'')||event.date+'|'+event.time+'|'+event.title);
     const path=folder+'/'+prefix+id+'.md';
-    if(plugin.app.vault.getAbstractFileByPath(path)){skipped++;continue;}
+    if(vault.getAbstractFileByPath(path)){skipped++;continue;}
     const body=['> [!info] '+writerUi('Assinatura iCalendar','iCalendar subscription'),
      '> '+writerUi('Evento importado. Mudanças locais são preservadas; atualizações não sobrescrevem notas existentes.','Imported event. Local edits are preserved; updates never overwrite existing notes.'),'',event.description||''].join('\n');
-    await plugin.app.vault.create(path,writerV83CalFormat({...valid,category:valid.category||'iCalendar'},body));
+    await vault.create(path,writerV83CalFormat({...valid,category:valid.category||'iCalendar'},body));
     imported++;
    }
-  }catch(error){errors++;console.warn('[Basic AI] Calendar subscription failed:',String(error.message||error).slice(0,150));}
+  }catch(_){
+   if(!current())break;
+   errors++;
+   console.warn('[Basic AI] Calendar subscription failed.');
+  }
  }
- if(!quiet)new Notice(imported+' '+writerUi('eventos novos, ','new events, ')+skipped+' '+writerUi('já importados, ','already imported, ')+errors+' '+writerUi('fontes com erro.','feeds failed.'));
+ if(current()&&run.notify)new Notice(imported+' '+writerUi('eventos novos, ','new events, ')+skipped+' '+writerUi('já importados, ','already imported, ')+errors+' '+writerUi('fontes com erro.','feeds failed.'));
  return {imported,skipped,errors};
 }
-function writerV107CalendarRegister(plugin){
+async function writerV107CalendarSynchronize(plugin,quiet=false,session=writerV107CalendarSession(plugin),automatic=false){
+ if(session.closed)return {imported:0,skipped:0,errors:0};
  const cfg=writerV107CalendarConfig(plugin.settings);
- plugin.addCommand({id:'v107-sync-ical-subscriptions',name:writerUi('Calendário: atualizar assinaturas HTTPS','Calendar: sync HTTPS subscriptions'),callback:()=>void writerV107CalendarSynchronize(plugin).catch(e=>new Notice(String(e.message||e)))});
- const interval=plugin.app.workspace.containerEl?.ownerDocument?.defaultView?.setInterval;
- if(typeof interval==='function'){
-  const handler=()=>{const c=plugin.settings.v107Feeds;if(c?.enabled&&c?.autoSync&&(!plugin._writerV107FeedLast||Date.now()-plugin._writerV107FeedLast>=c.intervalHours*3600000)){
-   plugin._writerV107FeedLast=Date.now();void writerV107CalendarSynchronize(plugin,true);
+ if(!cfg.enabled||(automatic&&!cfg.autoSync))return {imported:0,skipped:0,errors:0};
+ const pending=session.run;
+ if(pending){
+  if(pending.current()){
+   if(!quiet)pending.notify=true;
+   return pending.promise;
+  }
+  // An already-dispatched vault write can still finish. Wait before another import starts.
+  pending.invalidated=true;
+  const {revision,automaticRevision}=session;
+  await pending.promise;
+  if(session.revision!==revision||(automatic&&session.automaticRevision!==automaticRevision))return {imported:0,skipped:0,errors:0};
+  return writerV107CalendarSynchronize(plugin,quiet,session,automatic);
+ }
+ const {revision,automaticRevision}=session;
+ const run={notify:!quiet,automatic,invalidated:false,urls:cfg.urls.slice(),maxEvents:cfg.maxEvents};
+ const current=()=>!session.closed&&session.run===run&&!run.invalidated&&session.revision===revision&&plugin.settings.v107Feeds===cfg&&cfg.enabled&&
+  (!run.automatic||run.notify||(cfg.autoSync&&session.automaticRevision===automaticRevision))&&cfg.maxEvents===run.maxEvents&&cfg.urls.length===run.urls.length&&
+  run.urls.every((url,index)=>cfg.urls[index]===url);
+ run.current=current;
+ session.run=run;
+ run.promise=writerV107CalendarImport(plugin,run,current).catch(error=>{
+  if(current()&&run.notify)new Notice(String(error.message||error));
+  return {imported:0,skipped:0,errors:1};
+ }).finally(()=>{if(session.run===run)session.run=null;});
+ return run.promise;
+}
+function writerV107CalendarRegister(plugin){
+ const session=writerV107CalendarSession(plugin,true);
+ if(session.registered)return;
+ session.registered=true;
+ writerV107CalendarConfig(plugin.settings);
+ plugin.addCommand({id:'v107-sync-ical-subscriptions',name:writerUi('Calendário: atualizar assinaturas HTTPS','Calendar: sync HTTPS subscriptions'),callback:()=>void writerV107CalendarSynchronize(plugin,false,session)});
+ const win=plugin.app.workspace.containerEl?.ownerDocument?.defaultView;
+ if(typeof win?.setInterval==='function'){
+  const handler=()=>{const c=plugin.settings.v107Feeds;if(!session.closed&&c?.enabled&&c?.autoSync&&(session.lastAutomatic===null||Date.now()-session.lastAutomatic>=c.intervalHours*3600000)){
+   session.lastAutomatic=Date.now();void writerV107CalendarSynchronize(plugin,true,session,true);
   }};
-  const id=plugin.app.workspace.containerEl.ownerDocument.defaultView.setInterval(handler,3600000);
-  plugin.register?.(()=>plugin.app.workspace.containerEl?.ownerDocument?.defaultView?.clearInterval(id));
+  const id=win.setInterval(handler,3600000);
+  session.stopInterval=()=>win.clearInterval(id);
  }
 }
 function writerV107CalendarSettings(plugin,panel){
  const cfg=plugin.settings.v107Feeds;
+ const session=writerV107CalendarSession(plugin);
  panel.createEl('h3',{text:writerUi('Calendário · assinaturas HTTPS','Calendar · HTTPS subscriptions')});
  panel.createEl('p',{cls:'setting-item-description',text:writerUi('URLs privadas podem conter tokens: são guardadas localmente nas configurações do cofre. Não envie URLs de outras pessoas. Sincronização somente de leitura; notas locais nunca são sobrescritas.','Private URLs may contain tokens and are stored locally in vault settings. Read-only import; existing local notes are never overwritten.')});
- new Setting(panel).setName(writerUi('Ativar assinaturas externas','Enable external subscriptions')).addToggle(t=>t.setValue(cfg.enabled).onChange(async v=>{cfg.enabled=v;await plugin.saveSettings();}));
- new Setting(panel).setName(writerUi('Atualizar automaticamente','Automatic refresh')).addToggle(t=>t.setValue(cfg.autoSync).onChange(async v=>{cfg.autoSync=v;await plugin.saveSettings();}));
+ new Setting(panel).setName(writerUi('Ativar assinaturas externas','Enable external subscriptions')).addToggle(t=>t.setValue(cfg.enabled).onChange(async v=>{
+  cfg.enabled=v;
+  if(!v)session.revision++;
+  await plugin.saveSettings();
+ }));
+ new Setting(panel).setName(writerUi('Atualizar automaticamente','Automatic refresh')).addToggle(t=>t.setValue(cfg.autoSync).onChange(async v=>{
+  cfg.autoSync=v;
+  if(!v)session.automaticRevision++;
+  await plugin.saveSettings();
+ }));
  new Setting(panel).setName(writerUi('Intervalo (horas)','Refresh interval (hours)')).addSlider(s=>s.setLimits(1,24,1).setValue(cfg.intervalHours).setDynamicTooltip().onChange(async v=>{cfg.intervalHours=v;await plugin.saveSettings();}));
  for(let i=0;i<5;i++){
   new Setting(panel).setName(writerUi('Fonte ICS HTTPS ','HTTPS ICS feed ')+(i+1))
    .addText(t=>t.setValue(cfg.urls[i]||'').setPlaceholder('https://example.com/calendar.ics').onChange(async v=>{
     const list=[...cfg.urls];if(v&&!writerV107CalendarUrl(v))return;
     while(list.length<=i)list.push('');
+    if(list[i]!==v)session.revision++;
     list[i]=v;cfg.urls=list;await plugin.saveSettings();
    }));
  }
- new Setting(panel).setName(writerUi('Sincronizar agora','Sync now')).addButton(b=>b.setButtonText(writerUi('Atualizar','Refresh')).onClick(()=>void writerV107CalendarSynchronize(plugin)));
+ new Setting(panel).setName(writerUi('Sincronizar agora','Sync now')).addButton(b=>b.setButtonText(writerUi('Atualizar','Refresh')).onClick(()=>void writerV107CalendarSynchronize(plugin,false,session)));
 }
 
 // v3 module: src/v10/story-graph.js
@@ -27827,28 +28311,38 @@ function writerV107Register(plugin){
  }
 }
 function writerV107RegisterAfterStartup(plugin){
- if(plugin._writerV107StartupQueued)return;
- plugin._writerV107StartupQueued=true;
- let cancelled=false;
- plugin.register?.(()=>{cancelled=true;});
+ if(plugin._writerV107StartupQueued||plugin._writerV107Registered)return;
+ const session={};
+ plugin._writerV107StartupQueued=session;
+ let cancelled=false,started=false,timer=null;
+ const current=()=>!cancelled&&plugin._writerV107StartupQueued===session;
+ plugin.register?.(()=>{
+  cancelled=true;
+  if(timer!==null&&typeof clearTimeout==='function')clearTimeout(timer);
+  timer=null;
+  if(plugin._writerV107StartupQueued===session)delete plugin._writerV107StartupQueued;
+ });
  const run=()=>{
-  if(cancelled)return;
+  if(!current()||started)return;
+  started=true;timer=null;
   try{writerV107Register(plugin);}
   catch(error){console.error('[Basic AI] 10.7 startup was isolated:',error);}
+ };
+ const schedule=()=>{
+  if(!current()||started||timer!==null)return;
+  if(typeof setTimeout==='function')timer=setTimeout(run,0);
+  else run();
  };
  // The long-established Basic v3-v10 modules must initialize first. A broken
  // optional extension cannot reject Plugin.onload and make the entire plugin
  // appear disabled. This also avoids registering a View during layout restore.
  try{
   const ready=plugin.app?.workspace?.onLayoutReady;
-  if(typeof ready==='function')ready.call(plugin.app.workspace,()=>{
-   if(typeof setTimeout==='function')setTimeout(run,0);else run();
-  });
-  else if(typeof setTimeout==='function')setTimeout(run,0);
-  else run();
+  if(typeof ready==='function')ready.call(plugin.app.workspace,schedule);
+  else schedule();
  }catch(error){
   console.warn('[Basic AI] Deferred registration unavailable:',error);
-  if(typeof setTimeout==='function')setTimeout(run,0);
+  schedule();
  }
 }
 function writerV107CompatibilitySettings(plugin,panel){
@@ -31433,7 +31927,7 @@ function writerV12TaskWorkbench(plugin,initialScope='all'){
    const report={total:all.length,examined:0,failed:0,limited:0};
    for(let i=0;i<files.length;i+=12){
     const batch=await Promise.all(files.slice(i,i+12).map(async file=>({file,source:await plugin.app.vault.cachedRead(file).catch(()=>null)})));
-    if(closed||!writerV139TaskOn(plugin))return;
+    if(closed||rescan||!writerV139TaskOn(plugin))return;
     report.examined+=batch.length;
     for(const {file,source} of batch){
      if(typeof source!=='string'){report.failed++;continue;}
@@ -31442,11 +31936,17 @@ function writerV12TaskWorkbench(plugin,initialScope='all'){
     }
    }
    data=rows;scan=report;scanFailed=false;
-  }catch(error){scanFailed=true;if(!closed)new Notice(String(error.message||error));}
+  }catch(error){
+   if(!closed&&!rescan&&writerV139TaskOn(plugin)){
+    scanFailed=true;new Notice(String(error.message||error));
+   }
+  }
   finally{
    loading=false;
-   if(!closed&&writerV139TaskOn(plugin)){
-    if(rescan){rescan=false;void refresh();}else render();
+   const restart=rescan;rescan=false;
+   if(!closed){
+    if(restart&&writerV139TaskOn(plugin))void refresh();
+    else render();
    }
   }
  };
@@ -37306,6 +37806,8 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
 // v3 module: src/v13/grammar-settings.js
 /* Grammar setup uses the existing review preferences. No requests run on render. */
 let writerV137GrammarSettingId=0;
+// A settings panel can be rebuilt while its connection write is still pending.
+const writerGrammarConnectionWrites=new WeakMap();
 function writerV137GrammarWords(value){
  const words=[],seen=new Set();let skipped=0;
  for(const line of String(value||'').split(/\r?\n/)){
@@ -37347,11 +37849,24 @@ function writerV137GrammarSettings(plugin,panel){
   'LanguageTool suggests corrections. Notes change only when you accept a suggestion; reviewed text is sent to the selected server.')});
  const status=root.createDiv({cls:'writer-grammar-state',attr:{role:'status','aria-live':'polite'}});
  const builtIn=[],automatic=[];
- const savedConnection=()=>({reviewEndpoint:settings.reviewEndpoint||'',reviewUsername:settings.reviewUsername||'',reviewApiKey:settings.reviewApiKey||''});
- const connectionDraft=savedConnection(),connectionFields={};
- const connectionDirty=()=>Object.entries(savedConnection()).some(([key,value])=>connectionDraft[key]!==value);
- const connectionValid=()=>Boolean(writerGrammarEndpoint(connectionDraft.reviewEndpoint));
- let busy=false,savingConnection=false,revision=0,testButton,testStatus,saveConnection,discardConnection,connectionFeedback,endpointFeedback;
+ const live=()=>root.isConnected!==false&&plugin.settings===settings;
+ const connectionWrite=()=>writerGrammarConnectionWrites.get(plugin);
+ const savedConnection=()=>connectionWrite()?.previous??({
+  reviewEndpoint:settings.reviewEndpoint||'',reviewUsername:settings.reviewUsername||'',reviewApiKey:settings.reviewApiKey||''
+ });
+ const connectionBaseline={...savedConnection()},connectionDraft={...connectionBaseline},connectionFields={};
+ const connectionEdits=()=>Object.fromEntries(Object.entries(connectionDraft).filter(([key,value])=>value!==connectionBaseline[key]));
+ const syncConnectionFields=(edits={})=>{
+  Object.assign(connectionBaseline,savedConnection());
+  Object.assign(connectionDraft,connectionBaseline,edits);
+  for(const [key,field] of Object.entries(connectionFields))field.setValue(connectionDraft[key]);
+ };
+ const connectionDirty=()=>{
+  const saved=savedConnection();
+  return Object.entries(connectionEdits()).some(([key,value])=>saved[key]!==value);
+ };
+ const connectionValid=()=>Boolean(writerGrammarEndpoint(connectionEdits().reviewEndpoint??savedConnection().reviewEndpoint));
+ let busy=false,revision=0,testButton,testStatus,saveConnection,discardConnection,connectionFeedback,endpointFeedback;
  const section=(pt,en)=>{
   const card=root.createDiv({cls:'writer-grammar-section'});
   card.createEl('h4',{text:writerUi(pt,en)});return card;
@@ -37367,7 +37882,7 @@ function writerV137GrammarSettings(plugin,panel){
  const remember=(control,list=builtIn)=>{list.push(control);return control;};
  const refresh=()=>{
   const enabled=writerModuleOn(plugin,'review'),external=settings.reviewEngine==='external';
-  const dirty=connectionDirty(),valid=connectionValid();
+  const dirty=connectionDirty(),valid=connectionValid(),savingConnection=Boolean(connectionWrite());
   status.dataset.state=!enabled?'disabled':external?'external':cfg.enabled?'automatic':'manual';
   status.setText(!enabled?writerUi('Revisão desativada em Recursos. Suas preferências podem ser preparadas aqui.',
    'Review is disabled in Features. You can prepare its preferences here.'):
@@ -37444,7 +37959,7 @@ function writerV137GrammarSettings(plugin,panel){
  const connection=section('Conexão do corretor','Checker connection');
  const endpointId='writer-grammar-endpoint-'+(++writerV137GrammarSettingId);
  const editConnection=(key,value)=>{
-  if(savingConnection||connectionDraft[key]===value)return;
+  if(!live()||connectionWrite()||connectionDraft[key]===value)return;
   connectionDraft[key]=value;resetTest();
   connectionFeedback.setText(connectionDirty()?writerUi('Salve as alterações para testar a conexão.','Save your changes to test the connection.'):'');
   refresh();
@@ -37481,21 +37996,41 @@ function writerV137GrammarSettings(plugin,panel){
  new Setting(connection).setName(writerUi('Salvar conexão','Save connection'))
   .setDesc(writerUi('O corretor passa a usar o novo endereço e as credenciais depois de salvar.','The checker uses the new endpoint and credentials after you save.'))
   .addButton(button=>{saveConnection=button;button.setButtonText(writerUi('Salvar','Save')).onClick(async()=>{
-   if(savingConnection||settings.reviewEngine==='external'||!connectionDirty()||!connectionValid())return;
-   const previous=savedConnection();savingConnection=true;
-   Object.assign(settings,connectionDraft);
+   if(!live()||connectionWrite()||settings.reviewEngine==='external'||!connectionDirty()||!connectionValid())return;
+   const previous=savedConnection(),next=connectionEdits();
+   const fields=Object.keys(next).filter(key=>next[key]!==previous[key]);
+   const original=fields.map(key=>({key,value:settings[key],present:Object.hasOwn(settings,key)}));
+   let settle;
+   const settled=new Promise(resolve=>{settle=resolve;});
+   writerGrammarConnectionWrites.set(plugin,{previous,settled});
+   let failed=false;
    try{
+    for(const key of fields)settings[key]=next[key];
     await changed();
-    connectionFeedback.setText(writerUi('Conexão salva.','Connection saved.'));
    }catch(_){
-    Object.assign(settings,previous);writerV137GrammarInvalidate(plugin);
-    connectionFeedback.setText(writerUi('Não foi possível salvar a conexão. Tente novamente.','Could not save the connection. Try again.'));
-   }finally{savingConnection=false;refresh();}
+    failed=true;
+    if(plugin.settings===settings){
+     for(const {key,value,present} of original){
+      if(settings[key]!==next[key])continue;
+      if(present)settings[key]=value;
+      else delete settings[key];
+     }
+     writerV137GrammarInvalidate(plugin);
+    }
+   }finally{
+    writerGrammarConnectionWrites.delete(plugin);settle();
+    if(live()){
+     syncConnectionFields(failed?next:{});
+     connectionFeedback.setText(failed?
+      writerUi('Não foi possível salvar a conexão. Tente novamente.','Could not save the connection. Try again.'):
+      writerUi('Conexão salva.','Connection saved.'));
+     refresh();
+    }
+   }
   });})
   .addButton(button=>{discardConnection=button;button.setButtonText(writerUi('Descartar alterações','Discard changes')).onClick(()=>{
-   if(savingConnection||settings.reviewEngine==='external'||!connectionDirty())return;
-   Object.assign(connectionDraft,savedConnection());
-   for(const [key,field] of Object.entries(connectionFields))field.setValue(connectionDraft[key]);
+   if(!live()||connectionWrite()||settings.reviewEngine==='external'||!connectionDirty())return;
+   syncConnectionFields();
    connectionFeedback.setText('');refresh();
   });});
  connectionFeedback=connection.createEl('p',{cls:'writer-grammar-feedback',attr:{role:'status','aria-live':'polite'}});
@@ -37503,10 +38038,10 @@ function writerV137GrammarSettings(plugin,panel){
  new Setting(connection).setName(writerUi('Testar a conexão','Test connection'))
   .setDesc(writerUi('O teste envia apenas a frase ','The test sends only the sentence ')+`“${testText}”`)
   .addButton(button=>{testButton=button;button.setButtonText(writerUi('Testar agora','Test now')).onClick(async()=>{
-   if(busy||savingConnection||!writerModuleOn(plugin,'review')||settings.reviewEngine==='external'||connectionDirty()||!connectionValid())return;
+   if(!live()||busy||connectionWrite()||!writerModuleOn(plugin,'review')||settings.reviewEngine==='external'||connectionDirty()||!connectionValid())return;
    const token=++revision,connectionKey=writerGrammarConnectionKey(settings);busy=true;refresh();
    testStatus.dataset.state='loading';testStatus.setText(writerUi('Verificando a conexão…','Checking the connection…'));
-   const current=()=>token===revision&&root.isConnected!==false&&writerModuleOn(plugin,'review')&&
+   const current=()=>token===revision&&live()&&writerModuleOn(plugin,'review')&&
     settings.reviewEngine!=='external'&&connectionKey===writerGrammarConnectionKey(settings);
    try{
     const matches=await plugin.checkGrammar(testText);
@@ -37516,7 +38051,7 @@ function writerV137GrammarSettings(plugin,panel){
    }catch(error){
     if(!current())return;
     testStatus.dataset.state='error';testStatus.setText(String(error?.message||error));
-   }finally{if(token===revision){busy=false;refresh();}}
+   }finally{if(token===revision){busy=false;if(live())refresh();}}
   });});
  testStatus=connection.createEl('p',{cls:'writer-grammar-test-status',attr:{role:'status','aria-live':'polite'}});
  const exceptions=section('Palavras e regras ignoradas','Words and ignored rules');
@@ -37545,6 +38080,14 @@ function writerV137GrammarSettings(plugin,panel){
     await changed();
    });});
  const rulesFeedback=exceptions.createEl('p',{cls:'writer-grammar-feedback',attr:{id:rulesId,role:'status','aria-live':'polite'}});
+ const syncAfterWrite=()=>{
+  if(!live())return;
+  const write=connectionWrite();
+  if(write){void write.settled.then(syncAfterWrite);return;}
+  syncConnectionFields();refresh();
+ };
+ const write=connectionWrite();
+ if(write)void write.settled.then(syncAfterWrite);
  refresh();return root;
 }
 
@@ -38686,162 +39229,136 @@ async function writerV13ArcShift(view,project,id,delta){
  if(index<0||!target)return;
  await writerV13ArcMove(view,project,id,target.type==='divider'?target.id:target.title,delta>0);
 }
-function writerV13ArcInstall(){
- if(typeof ProjectsView!=='function'||ProjectsView.prototype._writerArcInstalled)return;
- const original=ProjectsView.prototype.drawScenes;
- const originalChange=ProjectsView.prototype.changeScenes;
- // Preserve an arc's position when the chapter anchoring it is renamed or removed.
- ProjectsView.prototype.changeScenes=async function(project,change){
-  const items=writerV13ArcStore(this,project),planned=[];
-  const result=await originalChange.call(this,project,scenes=>{
-   const before=scenes.filter(scene=>Number(scene.indent||0)===0)
-    .map(scene=>({scene,title:scene.title}));
-   change(scenes);
-   const after=scenes.filter(scene=>Number(scene.indent||0)===0);
-   planned.length=0;
-   for(const divider of items){
-    const oldIndex=before.findIndex(entry=>entry.title===divider.before);
-    if(oldIndex<0)continue;
-    const anchor=before[oldIndex].scene;
-    // Object identity distinguishes a rename from a deletion, without guessing
-    // from the new numeric position after unrelated removals or reordering.
-    const next=after.includes(anchor)?anchor:
-     before.slice(oldIndex+1).map(entry=>entry.scene).find(scene=>after.includes(scene));
-    const target=next?.title||null;
-    if(target!==divider.before)planned.push({divider,target});
+function writerV13ArcPlanSceneChange(dividers,scenes,change){
+ const before=scenes.filter(scene=>Number(scene.indent||0)===0)
+  .map(scene=>({scene,title:scene.title}));
+ change(scenes);
+ const after=new Set(scenes.filter(scene=>Number(scene.indent||0)===0));
+ const planned=[];
+ for(const divider of dividers){
+  if(!divider)continue;
+  const previous=divider.before;
+  const oldIndex=before.findIndex(entry=>entry.title===previous);
+  if(oldIndex<0)continue;
+  const anchor=before[oldIndex].scene;
+  // Object identity distinguishes renaming the anchor from removing it.
+  const next=after.has(anchor)?anchor:before.slice(oldIndex+1).find(entry=>after.has(entry.scene))?.scene;
+  const target=next?.title||null;
+  if(target!==previous)planned.push({divider,previous,target});
+ }
+ return planned;
+}
+function writerV13ArcRender(view,panel,project,rows){
+ const roots=writerV13ArcRoots(view,project),dividers=writerV13ArcStore(view,project);
+ const rowOf=title=>rows.find(row=>row.dataset.sceneTitle===title);
+ const projectKey=project.file.path,draft=view.draft;
+ const pickupValid=()=>view.writerArcPickup?.path===projectKey&&view.writerArcPickup?.draft===draft;
+ // Capture the destination grip before the regular chapter pickup handler runs.
+ for(const row of rows){
+  const grip=row.querySelector('.writer-project-drag-handle');
+  grip?.addEventListener('click',event=>{
+   if(!pickupValid())return;
+   event.preventDefault();event.stopImmediatePropagation();
+   const id=view.writerArcPickup.id;view.writerArcPickup=null;
+   void writerV13ArcMove(view,project,id,row.dataset.sceneTitle,false);
+  },true);
+  row.addEventListener('dragover',event=>{
+   if(!event.dataTransfer?.types?.includes('application/x-basic-ai-arc'))return;
+   event.preventDefault();row.addClass('writer-project-dragover');
+  });
+  row.addEventListener('dragleave',event=>{
+   if(!row.contains(event.relatedTarget))row.removeClass('writer-project-dragover');
+  });
+  row.addEventListener('drop',event=>{
+   let data;try{data=JSON.parse(event.dataTransfer?.getData('application/x-basic-ai-arc')||'null');}catch(_){return;}
+   if(data?.path!==projectKey||data?.draft!==draft)return;
+   event.preventDefault();event.stopImmediatePropagation();
+   row.removeClass('writer-project-dragover');
+   const after=event.clientY>row.getBoundingClientRect().top+row.getBoundingClientRect().height/2;
+   void writerV13ArcMove(view,project,data.id,row.dataset.sceneTitle,after);
+  },true);
+ }
+ const layout=writerV13ArcLayout(roots,dividers);
+ for(const divider of layout){
+  if(divider.type!=='divider')continue;
+  const row=panel.createDiv({cls:'writer-project-arc-divider'});
+  row.dataset.arcId=divider.id;
+  row.setAttribute('role','group');
+  row.setAttribute('aria-label',divider.label?lfMsg('Separador: ','Divider: ')+divider.label:lfMsg('Separador de arco','Story arc divider'));
+  const grip=row.createEl('button',{text:'⠿',cls:'writer-project-arc-grip',attr:{
+   type:'button',title:lfMsg('Mover separador','Move divider'),
+   'aria-label':lfMsg('Mover separador','Move divider')}});
+  grip.draggable=true;
+  grip.addEventListener('click',()=>{
+   if(view.scenePickup?.path===projectKey&&view.scenePickup?.draft===draft){
+    const source=view.scenePickup.source;view.clearScenePickup();
+    const target=divider.before||roots.at(-1);
+    if(target)void view.moveSceneRelative(project,source,target,!divider.before);
+    return;
+   }
+   if(pickupValid()&&view.writerArcPickup.id===divider.id){
+    view.writerArcPickup=null;void view.render();return;
+   }
+   if(pickupValid()){
+    const id=view.writerArcPickup.id;view.writerArcPickup=null;
+    void writerV13ArcMove(view,project,id,divider.id,false);return;
+   }
+   view.clearScenePickup();
+   view.writerArcPickup={path:projectKey,draft,id:divider.id};
+   row.addClass('writer-project-arc-picked');
+   new Notice(lfMsg('Separador selecionado. Toque na alça de outro separador ou capítulo.','Divider selected. Tap the handle of a chapter or another divider.'),3000);
+  });
+  grip.addEventListener('dragstart',event=>{
+   event.dataTransfer?.setData('application/x-basic-ai-arc',JSON.stringify({path:projectKey,draft,id:divider.id}));
+   if(event.dataTransfer)event.dataTransfer.effectAllowed='move';
+  });
+  const rule=row.createDiv({cls:'writer-project-arc-rule'+(divider.label?' is-labeled':'')});
+  if(divider.label)rule.createSpan({cls:'writer-project-arc-label',text:divider.label});
+  const more=row.createEl('button',{text:'⋯',cls:'writer-project-arc-more',attr:{type:'button',
+   title:lfMsg('Opções do separador','Divider options'),'aria-label':lfMsg('Opções do separador','Divider options')}});
+  more.addEventListener('click',event=>{
+   event.stopPropagation();
+   const menu=new Menu();
+   const actions=[
+    [lfMsg('Editar texto','Edit text'),'pencil',()=>writerV13ArcPrompt(view,project,divider)],
+    [lfMsg('Mover para cima','Move up'),'arrow-up',()=>writerV13ArcShift(view,project,divider.id,-1)],
+    [lfMsg('Mover para baixo','Move down'),'arrow-down',()=>writerV13ArcShift(view,project,divider.id,1)],
+    [lfMsg('Remover separador','Remove divider'),'trash-2',async()=>{
+     const items=writerV13ArcStore(view,project),at=items.findIndex(item=>item.id===divider.id);
+     if(at>=0){items.splice(at,1);view.writerArcPickup=null;await writerV13ArcSave(view);}
+    }]
+   ];
+   for(const [label,icon,action] of actions)menu.addItem(item=>item.setTitle(label).setIcon(icon).onClick(action));
+   menu.showAtMouseEvent(event);
+  });
+  row.addEventListener('dragover',event=>{
+   if(!event.dataTransfer?.types?.includes('application/x-basic-ai-arc')&&!event.dataTransfer?.types?.includes('application/x-basic-ai-scene'))return;
+   event.preventDefault();row.addClass('writer-project-dragover');
+  });
+  row.addEventListener('dragleave',event=>{
+   if(!row.contains(event.relatedTarget))row.removeClass('writer-project-dragover');
+  });
+  row.addEventListener('drop',event=>{
+   row.removeClass('writer-project-dragover');
+   let arc,scene;
+   try{arc=JSON.parse(event.dataTransfer?.getData('application/x-basic-ai-arc')||'null');}catch(_){arc=null;}
+   if(arc?.path===projectKey&&arc?.draft===draft){
+    event.preventDefault();event.stopImmediatePropagation();
+    void writerV13ArcMove(view,project,arc.id,divider.id,false);return;
+   }
+   try{scene=JSON.parse(event.dataTransfer?.getData('application/x-basic-ai-scene')||'null');}catch(_){scene=null;}
+   if(scene?.path===projectKey&&scene?.draft===draft){
+    const target=divider.before||roots.at(-1);
+    if(target){
+     event.preventDefault();event.stopImmediatePropagation();
+     void view.moveSceneRelative(project,scene.name,target,!divider.before);
+    }
    }
   });
-  // Only update preferences after the native index operation has succeeded.
-  if(planned.length){
-   for(const {divider,target} of planned)divider.before=target;
-   await this.plugin.saveSettings();await this.render();
-  }
-  return result;
- };
- ProjectsView.prototype._writerArcInstalled=true;
- ProjectsView.prototype.drawScenes=function(panel,project){
-  original.call(this,panel,project);
-  if(project.format==='single')return;
-  const view=this,roots=writerV13ArcRoots(view,project),dividers=writerV13ArcStore(view,project);
-  const toolbar=panel.querySelector('.writer-project-scene-actions-bar');
-  if(toolbar){
-   const button=lfIconButton(toolbar,'separator-horizontal',
-    lfMsg('Adicionar separador de arco','Add story arc divider'),'writer-project-arc-create');
-   button.addEventListener('click',()=>writerV13ArcPrompt(view,project));
-   toolbar.insertBefore(button,toolbar.children[1]||null);
-  }
-  const rows=Array.from(panel.querySelectorAll('.writer-project-scene[data-depth="0"]'));
-  const rowOf=title=>rows.find(row=>row.dataset.sceneTitle===title);
-  const projectKey=project.file.path,draft=view.draft;
-  const pickupValid=()=>view.writerArcPickup?.path===projectKey&&view.writerArcPickup?.draft===draft;
-  // Capture the destination grip before the regular chapter pickup handler runs.
-  for(const row of rows){
-   const grip=row.querySelector('.writer-project-drag-handle');
-   grip?.addEventListener('click',event=>{
-    if(!pickupValid())return;
-    event.preventDefault();event.stopImmediatePropagation();
-    const id=view.writerArcPickup.id;view.writerArcPickup=null;
-    void writerV13ArcMove(view,project,id,row.dataset.sceneTitle,false);
-   },true);
-   row.addEventListener('dragover',event=>{
-    if(!event.dataTransfer?.types?.includes('application/x-basic-ai-arc'))return;
-    event.preventDefault();row.addClass('writer-project-dragover');
-   });
-   row.addEventListener('dragleave',event=>{
-    if(!row.contains(event.relatedTarget))row.removeClass('writer-project-dragover');
-   });
-   row.addEventListener('drop',event=>{
-    let data;try{data=JSON.parse(event.dataTransfer?.getData('application/x-basic-ai-arc')||'null');}catch(_){return;}
-    if(data?.path!==projectKey||data?.draft!==draft)return;
-    event.preventDefault();event.stopImmediatePropagation();
-    row.removeClass('writer-project-dragover');
-    const after=event.clientY>row.getBoundingClientRect().top+row.getBoundingClientRect().height/2;
-    void writerV13ArcMove(view,project,data.id,row.dataset.sceneTitle,after);
-   },true);
-  }
-  const layout=writerV13ArcLayout(roots,dividers);
-  for(const divider of layout){
-   if(divider.type!=='divider')continue;
-   const row=panel.createDiv({cls:'writer-project-arc-divider'});
-   row.dataset.arcId=divider.id;
-   row.setAttribute('role','group');
-   row.setAttribute('aria-label',divider.label?lfMsg('Separador: ','Divider: ')+divider.label:lfMsg('Separador de arco','Story arc divider'));
-   const grip=row.createEl('button',{text:'⠿',cls:'writer-project-arc-grip',attr:{
-    type:'button',title:lfMsg('Mover separador','Move divider'),
-    'aria-label':lfMsg('Mover separador','Move divider')}});
-   grip.draggable=true;
-   grip.addEventListener('click',()=>{
-    if(view.scenePickup?.path===projectKey&&view.scenePickup?.draft===draft){
-     const source=view.scenePickup.source;view.clearScenePickup();
-     const target=divider.before||roots.at(-1);
-     if(target)void view.moveSceneRelative(project,source,target,!divider.before);
-     return;
-    }
-    if(pickupValid()&&view.writerArcPickup.id===divider.id){
-     view.writerArcPickup=null;void view.render();return;
-    }
-    if(pickupValid()){
-     const id=view.writerArcPickup.id;view.writerArcPickup=null;
-     void writerV13ArcMove(view,project,id,divider.id,false);return;
-    }
-    view.clearScenePickup();
-    view.writerArcPickup={path:projectKey,draft,id:divider.id};
-    row.addClass('writer-project-arc-picked');
-    new Notice(lfMsg('Separador selecionado. Toque na alça de outro separador ou capítulo.','Divider selected. Tap the handle of a chapter or another divider.'),3000);
-   });
-   grip.addEventListener('dragstart',event=>{
-    event.dataTransfer?.setData('application/x-basic-ai-arc',JSON.stringify({path:projectKey,draft,id:divider.id}));
-    if(event.dataTransfer)event.dataTransfer.effectAllowed='move';
-   });
-   const rule=row.createDiv({cls:'writer-project-arc-rule'+(divider.label?' is-labeled':'')});
-   if(divider.label)rule.createSpan({cls:'writer-project-arc-label',text:divider.label});
-   const more=row.createEl('button',{text:'⋯',cls:'writer-project-arc-more',attr:{type:'button',
-    title:lfMsg('Opções do separador','Divider options'),'aria-label':lfMsg('Opções do separador','Divider options')}});
-   more.addEventListener('click',event=>{
-    event.stopPropagation();
-    const menu=new Menu();
-    const actions=[
-     [lfMsg('Editar texto','Edit text'),'pencil',()=>writerV13ArcPrompt(view,project,divider)],
-     [lfMsg('Mover para cima','Move up'),'arrow-up',()=>writerV13ArcShift(view,project,divider.id,-1)],
-     [lfMsg('Mover para baixo','Move down'),'arrow-down',()=>writerV13ArcShift(view,project,divider.id,1)],
-     [lfMsg('Remover separador','Remove divider'),'trash-2',async()=>{
-      const items=writerV13ArcStore(view,project),at=items.findIndex(item=>item.id===divider.id);
-      if(at>=0){items.splice(at,1);view.writerArcPickup=null;await writerV13ArcSave(view);}
-     }]
-    ];
-    for(const [label,icon,action] of actions)menu.addItem(item=>item.setTitle(label).setIcon(icon).onClick(action));
-    menu.showAtMouseEvent(event);
-   });
-   row.addEventListener('dragover',event=>{
-    if(!event.dataTransfer?.types?.includes('application/x-basic-ai-arc')&&!event.dataTransfer?.types?.includes('application/x-basic-ai-scene'))return;
-    event.preventDefault();row.addClass('writer-project-dragover');
-   });
-   row.addEventListener('dragleave',event=>{
-    if(!row.contains(event.relatedTarget))row.removeClass('writer-project-dragover');
-   });
-   row.addEventListener('drop',event=>{
-    row.removeClass('writer-project-dragover');
-    let arc,scene;
-    try{arc=JSON.parse(event.dataTransfer?.getData('application/x-basic-ai-arc')||'null');}catch(_){arc=null;}
-    if(arc?.path===projectKey&&arc?.draft===draft){
-     event.preventDefault();event.stopImmediatePropagation();
-     void writerV13ArcMove(view,project,arc.id,divider.id,false);return;
-    }
-    try{scene=JSON.parse(event.dataTransfer?.getData('application/x-basic-ai-scene')||'null');}catch(_){scene=null;}
-    if(scene?.path===projectKey&&scene?.draft===draft){
-     const target=divider.before||roots.at(-1);
-     if(target){
-      event.preventDefault();event.stopImmediatePropagation();
-      void view.moveSceneRelative(project,scene.name,target,!divider.before);
-     }
-    }
-   });
-   if(pickupValid()&&view.writerArcPickup.id===divider.id)row.addClass('writer-project-arc-picked');
-   panel.insertBefore(row,divider.before?rowOf(divider.before)||null:null);
-  }
- };
+  if(pickupValid()&&view.writerArcPickup.id===divider.id)row.addClass('writer-project-arc-picked');
+  panel.insertBefore(row,divider.before?rowOf(divider.before)||null:null);
+ }
 }
-writerV13ArcInstall();
 
 // v3 module: src/v13/companion-toolkit.js
 /* Independently implemented compatibility descriptors. No companion code is bundled.
@@ -40236,7 +40753,7 @@ function writerMobileStatusRegister(plugin){
   viewportMax=Math.max(viewportMax,height);
   return inset>0||Math.max(win.innerHeight||0,viewportMax)-height>110;
  };
- const homeProps=new Set(),topProps=new Set(),observed=new Set();
+ const homeProps=new Set(),topProps=new Set(),noteProps=new Set(),observed=new Set();
  const resize=typeof win.ResizeObserver==='function'?new win.ResizeObserver(()=>scheduleLayout()):null;
  const flowBar=style=>style.position!=='fixed'&&style.position!=='absolute';
  const clearOffset=()=>{
@@ -40257,6 +40774,39 @@ function writerMobileStatusRegister(plugin){
    const css=Math.ceil(value)+'px';
    if(node.style.getPropertyValue(property)!==css)node.style.setProperty(property,css);
    tracked.add(node);
+  }
+ };
+ // Preserve the theme's native padding; only the scroll surface itself owns
+ // the extra clearance. Nested Markdown embeds and plugin editors are excluded.
+ const noteSelector='.markdown-preview-view,.cm-scroller';
+ const isNoteSurface=node=>{
+  const leaf=node.closest?.('.workspace-leaf-content');
+  if(leaf?.getAttribute?.('data-type')!=='markdown')return false;
+  if(node.closest?.('.markdown-embed,.internal-embed,.cm-embed-block'))return false;
+  if(node.classList.contains('cm-scroller')&&!node.closest?.('.markdown-source-view'))return false;
+  return !node.parentElement?.closest?.(noteSelector);
+ };
+ const noteClass='writer-mobile-note-scroll-clearance';
+ const clearNote=node=>{
+  node.classList.remove(noteClass);
+  for(const key of ['clearance','base-padding','base-scroll-padding'])
+   node.style.removeProperty('--writer-mobile-note-'+key);
+  noteProps.delete(node);
+ };
+ const applyNotes=next=>{
+  for(const node of noteProps)if(!next.has(node))clearNote(node);
+  for(const [node,value] of next){
+   if(!noteProps.has(node)){
+    const style=win.getComputedStyle(node);
+    const pixels=key=>Math.max(0,parseFloat(style.getPropertyValue(key))||0)+'px';
+    node.style.setProperty('--writer-mobile-note-base-padding',pixels('padding-bottom'));
+    node.style.setProperty('--writer-mobile-note-base-scroll-padding',pixels('scroll-padding-bottom'));
+    node.classList.add(noteClass);
+    noteProps.add(node);
+   }
+   const valuePx=Math.ceil(value)+'px';
+   if(node.style.getPropertyValue('--writer-mobile-note-clearance')!==valuePx)
+    node.style.setProperty('--writer-mobile-note-clearance',valuePx);
   }
  };
  const place=()=>{
@@ -40315,7 +40865,7 @@ function writerMobileStatusRegister(plugin){
     }
    }
   }else if(lift)clearOffset();
-  const homes=new Map(),editors=new Map();
+  const homes=new Map(),editors=new Map(),notes=new Map();
   for(const home of app.querySelectorAll('.writer-v8-home')){
    const bounds=visible(home);if(!bounds)continue;
    watch.add(home);
@@ -40323,6 +40873,22 @@ function writerMobileStatusRegister(plugin){
     nativeToolbarBounds&&nativeToolbarBounds.bottom>bounds.top?nativeToolbarBounds.top:null]
     .filter(n=>n!==null&&n>=bounds.top&&n<bounds.bottom);
    if(!keyboard&&upper.length)homes.set(home,Math.max(0,bounds.bottom-Math.min(...upper)+8));
+  }
+  // Work with actual viewport intersections, not global screen height. A
+  // narrow split pane beside a floating pill may not need any compensation.
+  const overlays=[];
+  if(!keyboard){
+   if(floating&&shown&&navTop!==null)overlays.push({top:navTop,bottom:navTop+navBounds.height,left:navBounds.left,right:navBounds.right});
+   if(nativeToolbarBounds)overlays.push(nativeToolbarBounds);
+   if(rowTop!==null&&row&&!row.hidden)overlays.push({top:rowTop,bottom:rowTop+(row.getBoundingClientRect().height||30),left:navBounds.left,right:navBounds.right});
+  }
+  for(const surface of app.querySelectorAll(noteSelector)){
+   if(!isNoteSurface(surface))continue;
+   const bounds=visible(surface);if(!bounds)continue;
+   watch.add(surface);
+   const overlapping=overlays.filter(rect=>rect.left<bounds.right&&rect.right>bounds.left&&
+    rect.top>=bounds.top&&rect.top<bounds.bottom&&rect.bottom>bounds.top);
+   if(overlapping.length)notes.set(surface,Math.max(0,bounds.bottom-Math.min(...overlapping.map(rect=>rect.top))+8));
   }
   for(const toolbar of app.querySelectorAll('.writer-v9-toolbar-docked > .writer-v9-format-toolbar.is-top')){
    const host=toolbar.parentElement,bounds=visible(host);if(!bounds)continue;
@@ -40336,6 +40902,7 @@ function writerMobileStatusRegister(plugin){
   }
   apply(homeProps,'--writer-mobile-home-clearance',homes);
   apply(topProps,'--writer-mobile-editor-top-clearance',editors);
+  applyNotes(notes);
   if(resize){
    for(const node of observed)if(!watch.has(node)){resize.unobserve(node);observed.delete(node);}
    for(const node of watch)if(!observed.has(node)){resize.observe(node);observed.add(node);}
@@ -40422,11 +40989,12 @@ function writerMobileStatusRegister(plugin){
  };
  const refresh=()=>{if(syncLayout())queue();};
  const onViewport=scheduleLayout;
- const onResize=()=>{if(lift)clearOffset();scheduleLayout();};
- const geometry='.mobile-navbar,.mobile-toolbar,.view-header,.writer-v8-home,.writer-v9-toolbar-docked,.writer-v9-format-toolbar';
+ const onResize=()=>{if(lift)clearOffset();for(const node of noteProps)clearNote(node);scheduleLayout();};
+ const geometry='.mobile-navbar,.mobile-toolbar,.view-header,.writer-v8-home,.writer-v9-toolbar-docked,.writer-v9-format-toolbar,'+noteSelector;
  const onTransition=event=>{if(event.target?.matches?.(geometry))scheduleLayout();};
  let lastPath=null;
  const onFile=()=>{
+  scheduleLayout();
   if(!row)return;
   const path=ws.getActiveFile?.()?.path;
   if(path!==lastPath){show(word);show(read);show(mode);lastPath=path;}
@@ -40463,6 +41031,7 @@ function writerMobileStatusRegister(plugin){
   insets.remove();
   apply(homeProps,'--writer-mobile-home-clearance',new Map());
   apply(topProps,'--writer-mobile-editor-top-clearance',new Map());
+  applyNotes(new Map());
   unmount();
   delete plugin.writerMobileStatus;
  });

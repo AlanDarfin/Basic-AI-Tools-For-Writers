@@ -3,7 +3,7 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const vm=require('node:vm');
 const fs=require('node:fs');
-const source=fs.readFileSync('src/v13/companion-layout.js','utf8');
+const source=fs.readFileSync('src/integrations/companion-layout.js','utf8');
 const load=extra=>vm.runInNewContext(source+'\n({writerCompanionRect,writerCompanionRectsOverlap,writerCompanionControlPlace,writerCompanionCompactPlace,writerCompanionRectsUnion,writerCompanionLayoutAllowed,writerCompanionLayoutRegister})',extra||{});
 const api=load();
 const rect=(left,top,width,height)=>({left,top,width,height,right:left+width,bottom:top+height});

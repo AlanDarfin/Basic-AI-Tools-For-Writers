@@ -2,8 +2,8 @@
 const {test}=require('node:test'),assert=require('node:assert/strict');
 const fs=require('node:fs'),vm=require('node:vm');
 const read=p=>fs.readFileSync(p,'utf8');
-const old=read('src/v8/writing-calendar.js'),core=read('src/v9/calendar-core.js'),studio=read('src/v9/calendar-studio.js');
-const dock=read('src/v10/sidebar-width-1010.js');
+const old=read('src/workspace/writing-calendar.js'),core=read('src/workspace/calendar-core.js'),studio=read('src/workspace/calendar-studio.js');
+const dock=read('src/workspace/sidebar-width-1010.js');
 class TFile{constructor(path='Writing Calendar/sample.md'){this.path=path;this.extension='md';}}
 class TFolder{}
 class ItemView{

@@ -1,8 +1,8 @@
 'use strict';
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const read=path=>fs.readFileSync(path,'utf8');
-const editable=read('src/v8/block-edit.js'),blocks=read('src/v8/format-blocks.js');
-const posts=read('src/v8/social-post.js'),media=read('src/v8/media-gallery.js');
+const editable=read('src/blocks/block-edit.js'),blocks=read('src/blocks/format-blocks.js');
+const posts=read('src/blocks/social-post.js'),media=read('src/blocks/media-gallery.js');
 const vmHelpers=vm.runInNewContext(editable+'\n'+blocks+'\n({writerV8FenceReplace,writerV8TabLayout,writerV8ReplaceTab,writerV8SplitTabs,writerV8ReadCard,writerV8ReplaceCardBody})',
  {writerUi:(pt,en)=>en});
 const {writerV8FenceReplace,writerV8TabLayout,writerV8ReplaceTab,writerV8SplitTabs,writerV8ReadCard,writerV8ReplaceCardBody}=vmHelpers;
@@ -99,7 +99,7 @@ test('fictional posts parse replies and bound author-input metrics',()=>{
  assert.equal(fn.writerV8SplitPost('First\n'+'=== reply\nReply\n'.repeat(41)),null);
 });
 test('both column formats render nested code and retain all content at the column limit',()=>{
- const widgets=read('src/v9/interactive-widgets.js'),legacyColumns=read('src/v10/media-drag-extension.js');
+ const widgets=read('src/blocks/interactive-widgets.js'),legacyColumns=read('src/editor/media-drag-extension.js');
  const rendered=[];
  const MarkdownRenderer={render:async(_app,markdown)=>{rendered.push(markdown);}};
  const {writerV92RenderColumns,writerV107ColumnsRender}=vm.runInNewContext(
@@ -167,8 +167,9 @@ test('media lightbox skips documents and PDFs and pauses playback when navigatin
 });
 test('read-only formatting modules do not add CodeMirror extensions',()=>{
  for(const input of [editable,posts,media])assert.doesNotMatch(input,/registerEditorExtension\(/);
- const build=read('scripts/build-v3.js'),css=read('src/styles/v8-interactive-media.css');
- for(const name of ['v8/block-edit','v8/social-post','v8/media-gallery'])assert.ok(build.includes(name),name);
+ const css=read('src/styles/blocks/v8-interactive-media.css');
+ const {sourceIds}=require('../scripts/js-manifest.js');
+ for(const id of ['src/v8/block-edit.js','src/v8/social-post.js','src/v8/media-gallery.js'])assert.ok(sourceIds.includes(id),id);
  assert.match(css,/writer-v8-tabs-side/);
  assert.match(css,/writer-v8-avatar-right/);
  assert.match(css,/\.writer-v8-tabs-right\{grid-template-columns:minmax\(0,1fr\) minmax\(90px,31%\)/);

@@ -4,7 +4,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
 const projectsSource=fs.readFileSync('projects.js','utf8');
-const dividersSource=fs.readFileSync('src/v13/longform-dividers.js','utf8');
+const dividersSource=fs.readFileSync('src/projects/longform-dividers.js','utf8');
 
 class Element{
  constructor(tag='div',options={}){this.tag=tag;this.options=options;this.children=[];this.listeners={};this.dataset={};}
@@ -13,6 +13,7 @@ class Element{
  createDiv(options){return this.createEl('div',options);}
  addEventListener(name,fn){this.listeners[name]=fn;}
  addClass(name){this.options.cls=[this.options.cls,name].filter(Boolean).join(' ');}
+ setAttribute(name,value){(this.options.attr??={})[name]=value;}
  click(){return this.listeners.click?.();}
  insertBefore(child,before){
   this.children.splice(this.children.indexOf(child),1);
@@ -92,6 +93,18 @@ test('one scene toggle folds all branches in a mixed tree and restores nested sc
  assert.deepEqual({...h.prefs.v7CollapsedScenes},{OtherDraft:true});
  assert.deepEqual(renderTree(h).rows,['A','A.1','A.1.a','B','B.1','Leaf']);
  assert.deepEqual(h.calls,['save','render','save','render']);
+});
+test('scene rendering places dividers before their root rows and after the last chapter',()=>{
+ const {panel,project,view,prefs}=fixture('en');
+ view.activeScenes=()=>[{title:'Chapter',indent:0},{title:'Child',indent:1},{title:'Next',indent:0}];
+ prefs.arcDividers={Principal:[
+  {id:'opening',label:'Opening',before:'Chapter'},
+  {id:'middle',label:'Middle',before:'Next'},
+  {id:'end',label:'End',before:null}
+ ]};
+ view.drawScenes(panel,project);
+ const order=panel.children.map(row=>row.dataset.arcId||row.dataset.sceneTitle).filter(Boolean);
+ assert.deepEqual(order,['opening','Chapter','Child','middle','Next','end']);
 });
 test('the scene toggle ignores repeat clicks while saving and keeps the previous state on failure',async()=>{
  const h=fixture();

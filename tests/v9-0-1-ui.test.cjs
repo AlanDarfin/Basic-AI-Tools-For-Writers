@@ -1,7 +1,7 @@
 'use strict';
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const read=p=>fs.readFileSync(p,'utf8');
-const chat=read('src/v8/finish-blocks.js');
+const chat=read('src/blocks/finish-blocks.js');
 const parse=vm.runInNewContext(chat+'\nwriterV8ChatParse');
 test('repeated speaker is inherited without forcing a visible name or time',()=>{
  const data=parse('[Left=Maria]\n< Maria | Primeira | 08:00\n< | Segunda mensagem\n< João | Resposta | 09:00');
@@ -30,7 +30,7 @@ test('chat renders repeated speaker as compact message-only row',()=>{
  assert.ok(first.children[0].children.some(node=>node.options.cls==='writer-v8-chat-meta'));
  assert.ok(!second.children[0].children.some(node=>node.options.cls==='writer-v8-chat-meta'));
 });
-const lock=read('src/v9/password-lock.js');
+const lock=read('src/workspace/password-lock.js');
 const lockApi=vm.runInNewContext(lock+'\n({merge:writerV9LockMerge,matches:writerV9LockMatches})');
 test('visual lock is opt-in, limits paths and never claims encryption',()=>{
  const data={};lockApi.merge(data);
@@ -54,5 +54,6 @@ test('v9.0.1 sources and runtime bundle contain new controls',()=>{
  }
  assert.match(style,/writer-v901-color-input/);
  assert.match(style,/writer-v9-space-sidebar/);
- assert.match(read('scripts/build-v3.js'),/v9\/password-lock/);
+ const {sourceIds}=require('../scripts/js-manifest.js');
+ assert.ok(sourceIds.includes('src/v9/password-lock.js'));
 });

@@ -1,7 +1,7 @@
 'use strict';
 const {test}=require('node:test'),assert=require('node:assert/strict');
 const vm=require('node:vm'),fs=require('node:fs');
-const source=fs.readFileSync('src/v9/smart-spaces.js','utf8');
+const source=fs.readFileSync('src/workspace/smart-spaces.js','utf8');
 const api=vm.runInNewContext(source+'\n({merge:writerV9SpacesMerge,sanitize:writerV9SpaceSanitize,tags:writerV9SpaceTags,items:writerV9SpaceItems})',
  {Modal:class{},Setting:class{},TFile:class{},TFolder:class{},ItemView:class{},writerUi:pt=>pt});
 test('Spaces are disabled by default and preserve safe custom collections',()=>{

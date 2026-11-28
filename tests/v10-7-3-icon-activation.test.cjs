@@ -63,7 +63,7 @@ function loadModule(path,globals={}){
 
 test('Dragger startup renders its first icon through the Obsidian API, not a global',()=>{
  const env=makeRuntime();
- const api=loadModule('src/v10/block-dragger.js',{obsidian:env.obsidian});
+ const api=loadModule('src/editor/block-dragger.js',{obsidian:env.obsidian});
  assert.doesNotThrow(()=>api.writerV106DragRegister(env.plugin));
  assert.deepEqual(env.icons,['grip']);
  assert.ok(env.commands.includes('v106-drag-move-block-up'));
@@ -78,7 +78,7 @@ test('Dragger startup renders its first icon through the Obsidian API, not a glo
 
 test('Dragger falls back gracefully if setIcon is not available in older Obsidian',()=>{
  const env=makeRuntime(false);
- const api=loadModule('src/v10/block-dragger.js',{obsidian:env.obsidian});
+ const api=loadModule('src/editor/block-dragger.js',{obsidian:env.obsidian});
  assert.doesNotThrow(()=>api.writerV106DragRegister(env.plugin));
  assert.deepEqual(env.icons,[]);
  assert.equal(env.doc.body.children[0].textContent,'⋮⋮');
@@ -88,7 +88,7 @@ test('Dragger falls back gracefully if setIcon is not available in older Obsidia
 test('Android long-press support keeps the grip hidden and does not cover buttons',()=>{
  const env=makeRuntime();
  env.obsidian.Platform.isMobile=true;
- const api=loadModule('src/v10/block-dragger.js',{obsidian:env.obsidian});
+ const api=loadModule('src/editor/block-dragger.js',{obsidian:env.obsidian});
  assert.doesNotThrow(()=>api.writerV106DragRegister(env.plugin));
  assert.equal(env.doc.body.children.length,2,'handle and indicator mount hidden');
  assert.equal(env.doc.body.children[0].style.display,'none');
@@ -101,7 +101,7 @@ test('Android long-press support keeps the grip hidden and does not cover button
 test('app.isMobile fallback also protects buttons with a hidden grip',()=>{
  const env=makeRuntime();
  env.plugin.app.isMobile=true;
- const api=loadModule('src/v10/block-dragger.js',{obsidian:env.obsidian});
+ const api=loadModule('src/editor/block-dragger.js',{obsidian:env.obsidian});
  assert.doesNotThrow(()=>api.writerV106DragRegister(env.plugin));
  assert.equal(env.doc.body.children.length,2);
  assert.equal(env.doc.body.children[0].style.display,'none');
@@ -111,19 +111,19 @@ test('app.isMobile fallback also protects buttons with a hidden grip',()=>{
 
 test('Related-notes/trash icon buttons also resolve setIcon explicitly',()=>{
  const env=makeRuntime();
- const api=loadModule('src/v10/discovery.js',{obsidian:env.obsidian});
+ const api=loadModule('src/workspace/discovery.js',{obsidian:env.obsidian});
  for(const name of ['link-2','refresh-cw','undo-2','trash-2','refresh-cw']){
   api.writerV10DiscoverySetIcon(makeElement('button'),name);
  }
  assert.deepEqual(env.icons,['link-2','refresh-cw','undo-2','trash-2','refresh-cw']);
- const source=fs.readFileSync('src/v10/discovery.js','utf8');
+ const source=fs.readFileSync('src/workspace/discovery.js','utf8');
  assert.equal((source.match(/\bwriterV10DiscoverySetIcon\(/g)||[]).length,7);
  assert.equal((source.match(/(?<![\w.])setIcon\(/g)||[]).length,0);
 });
 
 test('Supplemental UI module crash does not abort core feature registration',()=>{
  const caught=[],registered=[],failing=()=>{throw Error('An optional UI failed');};
- const code=fs.readFileSync('src/v10/enhancements.js','utf8');
+ const code=fs.readFileSync('src/core/enhancements.js','utf8');
  const api=vm.runInNewContext(code+'\n({writerV101RegisterEnhancements})',{
   console:{error(...args){caught.push(args);}},
   writerUi:(pt,en)=>en,
@@ -142,8 +142,8 @@ test('Supplemental UI module crash does not abort core feature registration',()=
 });
 
 test('All active 10.6/10.7 UI icon calls are API-backed',()=>{
- const drag=fs.readFileSync('src/v10/block-dragger.js','utf8');
- const discovery=fs.readFileSync('src/v10/discovery.js','utf8');
+ const drag=fs.readFileSync('src/editor/block-dragger.js','utf8');
+ const discovery=fs.readFileSync('src/workspace/discovery.js','utf8');
  assert.match(drag,/setIcon:obsidianSetIcon/);
  assert.match(drag,/obsidianSetIcon\(handle/);
  assert.match(discovery,/require\('obsidian'\)\.setIcon/);

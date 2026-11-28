@@ -2,7 +2,7 @@
 const {test}=require('node:test'),assert=require('node:assert/strict');
 const fs=require('node:fs'),vm=require('node:vm');
 const read=path=>fs.readFileSync(path,'utf8');
-const main=read('main.js'),style=read('src/styles/v9-design-system.css');
+const main=read('main.js'),style=read('src/styles/core/v9-design-system.css');
 test('v1 Markdown dictionary headings and separators still parse after historical rename',()=>{
  const i=main.indexOf('function parseDictionary(text) {');
  const j=main.indexOf('const AI_PROVIDERS=',i);
@@ -15,7 +15,7 @@ test('v1 Markdown dictionary headings and separators still parse after historica
  assert.equal(entries[1].word,'Abelhas');
 });
 test('all historical settings remain outside General in the v13 category hierarchy',()=>{
- const catalog=vm.runInNewContext(read('src/v13/settings-catalog.js')+'\nWRITER_SETTINGS_CATALOG',{});
+ const catalog=vm.runInNewContext(read('src/settings/settings-catalog.js')+'\nWRITER_SETTINGS_CATALOG',{});
  for(const id of ['homepage','v9Toolbar','v9Explorer','v9Spaces','v9Calendar'])assert.notEqual(catalog.find(item=>item.id===id)?.group,'general',id);
  for(const key of ['homepage','v9Toolbar','v9Explorer','v9Spaces','v9Calendar']){
   assert.match(main,new RegExp("id==='"+key+"'"),key);
@@ -35,7 +35,7 @@ test('only Basic-owned visual elements are styled by the final theme layer',()=>
  assert.doesNotMatch(style,/\n(?:body|html|\.workspace-leaf|\.modal-container)\s*\{/);
 });
 test('file explorer observes only its own view and does not rebuild stable icons',()=>{
- const source=read('src/v9/native-explorer.js');
+ const source=read('src/workspace/native-explorer.js');
  assert.match(source,/explorerObservers=new Map/);
  assert.match(source,/watcher\.observe\(host,\{childList:true,subtree:true\}\)/);
  assert.doesNotMatch(source,/observer\.observe\(documentRoot/);

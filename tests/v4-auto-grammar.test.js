@@ -7,7 +7,7 @@ const mockTimers={
  setTimeout:fn=>{const id=++nextId;queued.push({id,fn});return id;},
  clearTimeout:id=>cleared.add(id)
 };
-const api=vm.runInNewContext(fs.readFileSync('src/v4/auto-grammar.js','utf8')+
+const api=vm.runInNewContext(fs.readFileSync('src/writing/auto-grammar.js','utf8')+
  '\n({writerAutoGrammarSettings,writerAutoGrammarWindow,WriterAutoGrammar})',{
  VIEW:'basic-ai-tool-for-writers',writerModuleOn:()=>true,writerUi:(pt,en)=>pt,writerCurrentText:async()=> 'Sample document',console,...mockTimers,Date
 });

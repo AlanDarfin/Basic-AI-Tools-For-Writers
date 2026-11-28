@@ -4,7 +4,7 @@ const read=p=>fs.readFileSync(p,'utf8');
 const expose=(path,names,extras={})=>vm.runInNewContext(read(path)+'\n({'+names.join(',')+'})',
  {console,Date,Math,Map,Set,Uint8Array,ItemView:class{},writerUi:(pt,en)=>en,...extras});
 test('bookshelf: prior book metadata and favorites survive sanitization',()=>{
- const a=expose('src/v10/bookshelf.js',['writerV10BookshelfMerge','writerV10BookRecord','writerV10BookshelfSort','writerV10BookState']);
+ const a=expose('src/projects/bookshelf.js',['writerV10BookshelfMerge','writerV10BookRecord','writerV10BookshelfSort','writerV10BookState']);
  const settings={v10Bookshelf:{library:{'Books/Index.md':{favorite:true,shelf:'Sci-fi',progress:64,status:'reading'}},sort:'progress'}};
  a.writerV10BookshelfMerge(settings);
  assert.equal(settings.v10Bookshelf.sort,'progress');
@@ -16,7 +16,7 @@ test('bookshelf: prior book metadata and favorites survive sanitization',()=>{
 });
 test('bookshelf: progress sort reads each manuscript once and preserves title tie breaks',()=>{
  const flattened=[];
- const {writerV10BookshelfSort}=expose('src/v10/bookshelf.js',['writerV10BookshelfSort'],{
+ const {writerV10BookshelfSort}=expose('src/projects/bookshelf.js',['writerV10BookshelfSort'],{
   lfFlattenScenes:scenes=>{flattened.push(scenes);return scenes;}
  });
  const book=(title,status)=>({title,file:{path:title+'.md'},scenes:[{status}]});
@@ -27,7 +27,7 @@ test('bookshelf: progress sort reads each manuscript once and preserves title ti
  assert.deepEqual(books.map(p=>p.title),['Zebra','Draft','Alpha']);
 });
 test('both bookshelf block aliases accept documented progress and series sorts',()=>{
- const register=vm.runInNewContext(read('src/v10/bookshelf.js')+`\n{
+ const register=vm.runInNewContext(read('src/projects/bookshelf.js')+`\n{
   writerV10RenderBookshelf=(_plugin,target,options)=>target.push(options);
   writerV109RegisterStandaloneProgress=()=>{};
  }\nwriterV10RegisterBookshelf`);
@@ -46,7 +46,7 @@ test('both bookshelf block aliases accept documented progress and series sorts',
  ]);
 });
 test('Spaces: versions are bounded and duplicate snapshots avoided',()=>{
- const a=expose('src/v10/space-history.js',['writerV101SpaceHistoryMerge','writerV101SpaceHistoryRemember','writerV101SpaceHistoryEntry','writerV101SpaceLayoutSummary']);
+ const a=expose('src/workspace/space-history.js',['writerV101SpaceHistoryMerge','writerV101SpaceHistoryRemember','writerV101SpaceHistoryEntry','writerV101SpaceLayoutSummary']);
  const settings={v101SpaceHistory:{maxPerSpace:3,history:{}}},cfg=a.writerV101SpaceHistoryMerge(settings);
  const plugin={settings},space={id:'writing'};
  assert.equal(a.writerV101SpaceHistoryRemember(plugin,space,{type:'leaf',state:{type:'markdown'}},'First'),true);
@@ -57,7 +57,7 @@ test('Spaces: versions are bounded and duplicate snapshots avoided',()=>{
  assert.equal(a.writerV101SpaceLayoutSummary({type:'leaf'}).panes,1);
 });
 test('Enhancement suite: validate YAML, filter table, CSV formula injection guard',()=>{
- const a=expose('src/v10/enhancements.js',['writerV101SuiteMerge','writerV101YamlValidate','writerV101TableParse','writerV101TableCsv']);
+ const a=expose('src/core/enhancements.js',['writerV101SuiteMerge','writerV101YamlValidate','writerV101TableParse','writerV101TableCsv']);
  const good=a.writerV101YamlValidate('name: Example',x=>({name:'Example'}));
  assert.equal(good.valid,true);
  const invalid=a.writerV101YamlValidate('broken: [',()=>{throw Error('Unexpected mapping');});
@@ -69,7 +69,7 @@ test('Enhancement suite: validate YAML, filter table, CSV formula injection guar
  assert.equal(a.writerV101SuiteMerge({}).bulkProperties,false);
 });
 test('Timeline: dependency sort, eras and legacy defaults',()=>{
- const a=expose('src/v9/timeline-blocks.js',['writerV95TimelineParse','writerV101TimelineDependencies']);
+ const a=expose('src/blocks/timeline-blocks.js',['writerV95TimelineParse','writerV101TimelineDependencies']);
  const data=a.writerV95TimelineParse('sort: dependencies\nmax-events: 150\npage-size: 30\n'+
   'date: 2027\ntitle: Second\nid: second\nafter: first\nera: Future\ncontent: B\n---\n'+
   'date: 2026\ntitle: First\nid: first\ncontent: A','timeline-labeled');
@@ -79,7 +79,7 @@ test('Timeline: dependency sort, eras and legacy defaults',()=>{
  assert.equal(a.writerV95TimelineParse('+ 1\n+ One\n+ Body').config.maxEvents,80);
 });
 test('Flow: dependency levels are finite even when links cycle',()=>{
- const a=expose('src/v9/flow-composer.js',['writerV101FlowDepths','writerV93FlowParse']);
+ const a=expose('src/editor/flow-composer.js',['writerV101FlowDepths','writerV93FlowParse']);
  const depths=a.writerV101FlowDepths(['[[First]]','[[Second]] | after:[[First]]','[[Third]] | after:[[Second]]']);
  assert.deepEqual(Array.from(depths),[0,1,2]);
  const cyclic=a.writerV101FlowDepths(['[[A]] | after:[[B]]','[[B]] | after:[[A]]']);
@@ -87,7 +87,7 @@ test('Flow: dependency levels are finite even when links cycle',()=>{
  assert.equal(a.writerV93FlowParse('layout: graph\n[[A]]',{maxItems:20}).layout,'graph');
 });
 test('Calendar: deterministic offline ICS parser, bounded events and export',()=>{
- const a=expose('src/v10/calendar-exchange.js',['writerV101IcsParse','writerV101IcsExport','writerV101CalendarExchangeMerge'],
+ const a=expose('src/integrations/calendar-exchange.js',['writerV101IcsParse','writerV101IcsExport','writerV101CalendarExchangeMerge'],
   {writerV83Date:x=>x,writerV83DateOf:d=>[d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-')});
  const source=['BEGIN:VCALENDAR','BEGIN:VEVENT','SUMMARY:Chapter\\, one','DTSTART;VALUE=DATE:20261108','RRULE:FREQ=WEEKLY','END:VEVENT','END:VCALENDAR'].join('\r\n');
  const events=a.writerV101IcsParse(source);
@@ -98,7 +98,7 @@ test('Calendar: deterministic offline ICS parser, bounded events and export',()=
  assert.equal(a.writerV101CalendarExchangeMerge({}).maxImport,150);
 });
 test('Spaced repetition: custom intervals preserve old schedule defaults',()=>{
- const a=expose('src/v8/writing-study.js',['writerV83StudySchedule','writerV83StudyConfig']);
+ const a=expose('src/writing/writing-study.js',['writerV83StudySchedule','writerV83StudyConfig']);
  const first=a.writerV83StudySchedule(null,4,1000);
  assert.equal(first.interval,1);
  const custom=a.writerV83StudySchedule(null,4,1000,{graduatingDays:3});
@@ -108,14 +108,15 @@ test('Spaced repetition: custom intervals preserve old schedule defaults',()=>{
  assert.equal(a.writerV83StudyConfig({}).dailyMax,30);
 });
 test('Pomodoro: focus summary tracks local seven-day data',()=>{
- const a=expose('src/v9/pomodoro.js',['writerV101PomodoroSummary'],{require:()=>({ItemView:class{}})});
+ const a=expose('src/workspace/pomodoro.js',['writerV101PomodoroSummary'],{require:()=>({ItemView:class{}})});
  const now=new Date('2026-11-04T12:00:00Z').getTime();
  const result=a.writerV101PomodoroSummary([{end:now-1000,minutes:25,task:'Chapter 1'}],now);
  assert.equal(result.total,25);assert.equal(result.tasks[0][1],1);
 });
 test('Source and bundle ship extension modules, visuals, and translated reference guides',()=>{
- const build=read('scripts/build-v3.js'),css=read('styles.css'),js=read('main.js');
- for(const module of ['v10/space-history','v10/enhancements','v10/calendar-exchange'])assert.ok(build.includes(module),module);
+ const css=read('styles.css'),js=read('main.js');
+ const {sourceIds}=require('../scripts/js-manifest.js');
+ for(const id of ['src/v10/space-history.js','src/v10/enhancements.js','src/v10/calendar-exchange.js'])assert.ok(sourceIds.includes(id),id);
  for(const name of ['writerV101RegisterSpaceHistory(this)','writerV101RegisterEnhancements(this)','writerV101RegisterCalendarExchange(this)'])assert.ok(js.includes(name),name);
  assert.match(css,/writer-v101-focus-bars/);
  for(const file of ['README.md','docs/README.pt-BR.md']){

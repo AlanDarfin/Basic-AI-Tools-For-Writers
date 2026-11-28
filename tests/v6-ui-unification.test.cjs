@@ -1,7 +1,7 @@
 'use strict';
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const css=fs.readFileSync('styles.css','utf8');
-const nav=fs.readFileSync('src/v6/longform-navigation.js','utf8');
+const nav=fs.readFileSync('src/projects/longform-navigation.js','utf8');
 const main=fs.readFileSync('main.js','utf8');
 const layer=css.slice(css.indexOf('Basic AI v6.0.0 | One visual language'));
 test('the final unified layer covers ALL plugin settings, tools, projects and dialogs',()=>{

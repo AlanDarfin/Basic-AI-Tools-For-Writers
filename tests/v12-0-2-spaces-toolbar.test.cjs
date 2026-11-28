@@ -1,10 +1,10 @@
 'use strict';
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const read=p=>fs.readFileSync(p,'utf8');
-const spaces=read('src/v9/smart-spaces.js');
-const flex=read('src/v9/explorer-flex.js');
-const toolbar=read('src/v9/context-toolbar.js');
-const dragger=read('src/v10/block-dragger.js');
+const spaces=read('src/workspace/smart-spaces.js');
+const flex=read('src/workspace/explorer-flex.js');
+const toolbar=read('src/editor/context-toolbar.js');
+const dragger=read('src/editor/block-dragger.js');
 const ctx={
  writerUi:(pt,en)=>pt,
  writerV8HomeIsMobile:plugin=>!!plugin.app?.isMobile,
@@ -83,7 +83,7 @@ test('dragger retains its handle while crossing from text to the grip',()=>{
  assert.match(dragger,/registerDomEvent\(handle,'pointerenter'/);
 });
 test('root Space styling hides only ancestor labels, not descendants',()=>{
- const css=read('src/styles/v12-0-1-mobile.css');
+ const css=read('src/styles/mobile/v12-0-1-mobile.css');
  assert.match(css,/writer-v1202-space-ancestor > \.nav-folder-title/);
  assert.match(css,/writer-v1202-space-scoped/);
  assert.doesNotMatch(css,/writer-v1202-space-root > \.nav-folder-title\s*\{\s*display:none/);

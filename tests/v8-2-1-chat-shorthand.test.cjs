@@ -1,7 +1,7 @@
 'use strict';
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const read=path=>fs.readFileSync(path,'utf8');
-const source=read('src/v8/finish-blocks.js');
+const source=read('src/blocks/finish-blocks.js');
 const api=vm.runInNewContext(source+'\n({writerV8ChatParse,writerV8ChatSplitFields,writerV8ChatRender})',{console});
 const {writerV8ChatParse:parse,writerV8ChatSplitFields:split}=api;
 test('explicit avatar, no avatar, and no prefix variants',()=>{

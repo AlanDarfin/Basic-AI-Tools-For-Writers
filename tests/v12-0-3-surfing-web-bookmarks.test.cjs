@@ -3,10 +3,10 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
-const util=fs.readFileSync('src/v8/home-utilities.js','utf8');
-const finish=fs.readFileSync('src/v8/finish-blocks.js','utf8');
-const home=fs.readFileSync('src/v8/writing-home.js','utf8');
-const spaces=fs.readFileSync('src/v9/smart-spaces.js','utf8');
+const util=fs.readFileSync('src/workspace/home-utilities.js','utf8');
+const finish=fs.readFileSync('src/blocks/finish-blocks.js','utf8');
+const home=fs.readFileSync('src/workspace/writing-home.js','utf8');
+const spaces=fs.readFileSync('src/workspace/smart-spaces.js','utf8');
 const obs={Platform:{isMobile:false}};
 const common={URL,console,require:id=>id==='obsidian'?obs:null,writerUi:(pt,en)=>en};
 const api=vm.runInNewContext(util+

@@ -1,6 +1,6 @@
 'use strict';
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
-const source=fs.readFileSync('src/v7/longform-rc.js','utf8');
+const source=fs.readFileSync('src/projects/longform-rc.js','utf8');
 class TFile{constructor(path){this.path=path;this.basename=path.split('/').pop().replace(/\.md$/,'');}}
 const alpha=new TFile('Novel/Ch 1.md'),beta=new TFile('Novel/Ch 2.md'),gamma=new TFile('Novel/Extra.md');
 const objects={

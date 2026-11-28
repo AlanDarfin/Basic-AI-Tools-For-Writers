@@ -3,7 +3,7 @@ const assert=require('node:assert/strict');
 const {test}=require('node:test');
 const fs=require('node:fs');
 const vm=require('node:vm');
-const source=fs.readFileSync('src/v13/visual-kit.js','utf8');
+const source=fs.readFileSync('src/integrations/visual-kit.js','utf8');
 function runtime({mobile=false,external=false,enabled=true}={}){
  const children=[],disposals=[],saved=[];
  let constructed=0;

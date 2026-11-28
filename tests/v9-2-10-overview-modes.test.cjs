@@ -1,7 +1,7 @@
 'use strict';
 const {test}=require('node:test'),assert=require('node:assert/strict');
 const fs=require('node:fs'),vm=require('node:vm');
-const source=fs.readFileSync('src/v8/folder-overview.js','utf8');
+const source=fs.readFileSync('src/blocks/folder-overview.js','utf8');
 class TFolder{constructor(path,children=[]){this.path=path;this.name=path.split('/').pop();this.children=children;this.parent=null;}}
 class TFile{constructor(path,mtime=0){this.path=path;this.basename=path.split('/').at(-1).replace(/\.md$/,'');this.name=path.split('/').at(-1);this.extension='md';this.stat={mtime,ctime:mtime,size:mtime};this.parent=null;}}
 const api=vm.runInNewContext(source+'\n({writerV8OverviewConfig,writerV8OverviewEntries,writerV8OverviewSortEntries,writerV8OverviewRoot,writerV8OverviewPlainBrief,writerV8RegisterFolderOverview})',{

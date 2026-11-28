@@ -3,7 +3,7 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
-const source=fs.readFileSync('src/v9/spaces-dock.js','utf8');
+const source=fs.readFileSync('src/workspace/spaces-dock.js','utf8');
 function setup(){
  const doc={},callbacks=[],events={},observers=[],destroy=[];
  function node(tag='div'){
@@ -167,11 +167,11 @@ test('Spaces selector is restored when Android recreates native tabs',()=>{
  assert.equal(observers[0].disconnected,true);
 });
 test('The mobile collapsing panel is positioned above tabs, not in explorer scroll',()=>{
- const css=fs.readFileSync('src/styles/v10-2-workflow.css','utf8');
+ const css=fs.readFileSync('src/styles/features/v10-2-workflow.css','utf8');
  assert.match(css,/\.writer-v1014-mobile-spaces-anchor/);
  assert.match(css,/inset:auto 8px calc\(100% \+ 3px\)/);
  assert.match(css,/\.writer-v1014-spaces-options\[hidden\]/);
  assert.match(css,/\.writer-v1014-spaces-toggle/);
- const source=fs.readFileSync('src/v9/spaces-dock.js','utf8');
+ const source=fs.readFileSync('src/workspace/spaces-dock.js','utf8');
  assert.doesNotMatch(source,/const mount=root\.querySelector\?\.\('\.workspace-drawer-inner'\)/);
 });

@@ -1,6 +1,6 @@
 'use strict';
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
-const source=['src/v5/easy-typing.js','src/v5/easy-advanced.js','src/v5/smart-typography.js'].map(p=>fs.readFileSync(p,'utf8')).join('\n');
+const source=['src/editor/easy-typing.js','src/editor/easy-advanced.js','src/editor/smart-typography.js'].map(p=>fs.readFileSync(p,'utf8')).join('\n');
 const mock={writerUi:(pt)=>pt,writerModuleOn:()=>true,console,require:()=>({})};
 const v=vm.runInNewContext(source+'\n({writerEasyMerge,writerEasyTypingAtInput,writerEasyExcluded,writerEasyPaste,writerEasyTabOut,writerEasyBackspacePrefix,writerEasyProseFormat,writerTypoMerge,writerTypoAtInput,writerTypoConvertProse,writerTypingUnsafeContext,WriterEasyTyping,WriterSmartTypography,writerTypingFilterTransaction,writerTypingRestoreBackspace,writerEasyRegexValid})',mock);
 let count=0;
@@ -151,8 +151,8 @@ test('literal replacements preserve pipes, disabled rules and independent editor
  ]}});
  assert.equal(v.writerEasyTypingAtInput('a|b','b',easy).text,'with|pipe');
  assert.equal(v.writerEasyTypingAtInput('off','f',easy),null);
- const text=fs.readFileSync('src/v5/easy-typing.js','utf8');
- const advanced=fs.readFileSync('src/v5/easy-advanced.js','utf8');
+ const text=fs.readFileSync('src/editor/easy-typing.js','utf8');
+ const advanced=fs.readFileSync('src/editor/easy-advanced.js','utf8');
  assert.ok(text.includes("createEl('details'"),'Literal rules need individual collapsible editors');
  assert.ok(!text.includes("origem|destino"),'Legacy pipe syntax must not be the editor');
  assert.ok(advanced.includes("writer-typing-regex-rule"));
@@ -188,10 +188,10 @@ test('blank fenced-code lines remain literal even before syntax nodes are availa
 });
 test('typing settings are independent of Keyshots bindings',()=>{
  const basic=fs.readFileSync('main.js','utf8');
- const build=fs.readFileSync('scripts/build-v3.js','utf8');
+ const {sourceIds}=require('../scripts/js-manifest.js');
  for(const name of ['easy-typing','smart-typography']){
   assert.ok(basic.includes('// v3 module: src/v5/'+name+'.js'));
-  assert.ok(build.includes('v5/'+name));
+  assert.ok(sourceIds.includes('src/v5/'+name+'.js'));
  }
  for(const sym of ['writerEasyMerge(this.settings)','writerTypoMerge(this.settings)','this.writerEasyTyping.register()','this.writerSmartTypography.register()'])
   assert.ok(basic.includes(sym),sym);

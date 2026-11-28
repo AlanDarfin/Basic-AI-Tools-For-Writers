@@ -1,6 +1,6 @@
 'use strict';
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
-const source=fs.readFileSync('src/v8/finish-blocks.js','utf8');
+const source=fs.readFileSync('src/blocks/finish-blocks.js','utf8');
 const api=vm.runInNewContext(source+'\n({writerV8ChatParse,writerV8ChatFakeAudio,writerV8ChatRenderFakeAudio})',
  {console,writerUi:(pt)=>pt});
 
@@ -68,7 +68,7 @@ test('transcript is always visible, text-only and has no extra toggle',()=>{
 
 test('shipped bundle, styles and documentation include transcription and no external recognition',()=>{
  assert.match(fs.readFileSync('main.js','utf8'),/Written transcript/);
- const css=fs.readFileSync('src/styles/v9-5-2-chat-audio.css','utf8');
+ const css=fs.readFileSync('src/styles/blocks/v9-5-2-chat-audio.css','utf8');
  assert.ok(fs.readFileSync('styles.css','utf8').includes(css.trimEnd()));
  assert.match(css,/writer-v8-chat-transcript-text/);
  assert.doesNotMatch(source,/getUserMedia\(|MediaRecorder\(|new Audio\(/);

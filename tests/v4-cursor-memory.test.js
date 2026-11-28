@@ -2,7 +2,7 @@
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
-const src=fs.readFileSync('src/v4/cursor-memory.js','utf8');
+const src=fs.readFileSync('src/editor/cursor-memory.js','utf8');
 const {writerCursorMerge,writerCursorClamp,WriterCursorMemory}=vm.runInNewContext(src+'\n({writerCursorMerge,writerCursorClamp,WriterCursorMemory})',{
  writerModuleOn:()=>true,writerUi:(pt,en)=>en,
  MarkdownView:class{},EditorView:{},Setting:class{},Notice:class{},
@@ -62,10 +62,11 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
  assert.ok(Object.keys(memory.entries).length<=50);
  console.log('PASS bookmarks are bounded');
 
- const css=fs.readFileSync('styles.css','utf8'),integration=fs.readFileSync('src/v4/integrations.js','utf8'),bundle=fs.readFileSync('main.js','utf8');
+ const css=fs.readFileSync('styles.css','utf8'),integration=fs.readFileSync('src/integrations/integrations.js','utf8'),bundle=fs.readFileSync('main.js','utf8');
  assert.ok(integration.includes("Decoration.line({class:'writer-v4-typewriter-current-line'})"));
  assert.ok(css.includes('.cm-line.writer-v4-typewriter-current-line'));
- assert.match(css,/body\.writer-v4-typewriter \.cm-editor \.cm-line\s*\{\s*padding-inline-start:10px;/);
+ assert.match(css,/body\.writer-v4-typewriter \.cm-editor\.writer-v4-typewriter-engaged \.cm-line\s*\{\s*padding-inline-start:10px;/);
+ assert.doesNotMatch(css,/body\.writer-v4-typewriter \.cm-editor \.cm-line\s*\{/);
  assert.match(css,/\.cm-line\.writer-v4-typewriter-current-line::before\s*\{[^}]*inset-inline-start:0;[^}]*width:3px;/);
  assert.doesNotMatch(css,/box-shadow:\s*inset\s+3px\s+0\s+0\s+var\(--interactive-accent\)/);
  assert.ok(css.includes('.cm-line:not(.writer-v4-typewriter-current-line)'));

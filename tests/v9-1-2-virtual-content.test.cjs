@@ -4,8 +4,8 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
 const read=path=>fs.readFileSync(path,'utf8');
-const source=read('src/v9/virtual-content.js');
-const nav=read('src/v8/format-blocks.js')+'\n'+read('src/v6/longform-navigation.js');
+const source=read('src/blocks/virtual-content.js');
+const nav=read('src/blocks/format-blocks.js')+'\n'+read('src/projects/longform-navigation.js');
 class TFile{
  constructor(path){this.path=path;this.basename=path.split('/').at(-1).replace(/\.md$/,'');this.extension='md';this.parent={path:path.split('/').slice(0,-1).join('/')};}
 }
@@ -44,9 +44,10 @@ test('v9.1.2 manifest, lockfile, modular source, compiled bundle, CSS and docume
  assert.match(main,/writerV912VirtualRegister\(this\)/);
  assert.match(main,/writerV912VirtualMerge\(this\.settings\)/);
  assert.match(main,/WRITER_V912_VIRTUAL_VIEW/);
- assert.match(read('scripts/build-v3.js'),/'v9\/virtual-content'/);
+ const {sourceIds}=require('../scripts/js-manifest.js');
+ assert.ok(sourceIds.includes('src/v9/virtual-content.js'));
  assert.match(read('styles.css'),/writer-v912-virtual-block/);
- assert.match(read('scripts/build-css.js'),/v9-1-2-virtual-content\.css/);
+ assert.match(read('scripts/css-manifest.js'),/v9-1-2-virtual-content\.css/);
  for(const [doc,guide,dynamic,navigation] of [
   ['README.md','docs/SUITES_AND_INTEGRATIONS.en.md','Dynamic content','Chapter navigation'],
   ['docs/README.pt-BR.md','docs/SUITES_AND_INTEGRATIONS.pt-BR.md','Conteúdo dinâmico','Navegação de capítulos']

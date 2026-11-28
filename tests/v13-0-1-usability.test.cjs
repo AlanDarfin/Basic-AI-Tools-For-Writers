@@ -4,11 +4,11 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
 const read=path=>fs.readFileSync(path,'utf8');
-const ui=read('src/v13/ui-foundation.js');
-const drag=read('src/v10/block-dragger.js');
-const home=read('src/v8/writing-home.js');
-const toolbar=read('src/v9/context-toolbar.js');
-const css=read('src/styles/v13-foundation.css');
+const ui=read('src/core/ui-foundation.js');
+const drag=read('src/editor/block-dragger.js');
+const home=read('src/workspace/writing-home.js');
+const toolbar=read('src/editor/context-toolbar.js');
+const css=read('src/styles/core/v13-foundation.css');
 const main=read('main.js');
 const functions=vm.runInNewContext(ui+'\n'+drag+'\n({writerV131MinWidgetColumns,writerV131WidgetDropAfter,writerV131RankSettings,writerV131DragPosition})',{console,writerUi:(pt,en)=>en});
 test('widget width is safe in an Obsidian 720p split pane',()=>{
@@ -62,7 +62,7 @@ test('resize hotspots do not intercept invisible button click targets',()=>{
 test('settings and toolbar remain compact without visible accidental horizontal scrollbars',()=>{
  assert.match(css,/container-name:basic-settings/);
  assert.doesNotMatch(css,/writer-v131-settings-pickers/);
- assert.match(fs.readFileSync('src/styles/v13-6-tools.css','utf8'),/@container basic-settings \(max-width:530px\)/);
+ assert.match(fs.readFileSync('src/styles/features/v13-6-tools.css','utf8'),/@container basic-settings \(max-width:530px\)/);
  assert.match(css,/dictionary-settings-subtabs::-webkit-scrollbar\{display:none/);
  assert.match(css,/writer-v1048-format-toolbar::-webkit-scrollbar\{/);
  assert.match(css,/writer-v9-toolbar-host \.writer-v9-format-toolbar/);

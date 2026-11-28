@@ -4,8 +4,9 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
 const read=p=>fs.readFileSync(p,'utf8');
+const {resolveSourcePath}=require('../scripts/js-manifest.js');
 const files=['src/v9/explorer-favorites-preview.js','src/v9/interactive-widgets.js','src/v9/research-style.js','src/v9/session-drafts.js'];
-const sources=files.map(read);
+const sources=files.map(id=>read(resolveSourcePath(id)));
 class TFile{constructor(path){this.path=path;this.extension='md';this.basename=path.split('/').at(-1).replace(/\.md$/,'');this.parent={path:path.split('/').slice(0,-1).join('/')};}}
 class TFolder{constructor(path){this.path=path;this.name=path.split('/').at(-1);this.children=[];}}
 const novel=new TFile('Novel/Chapter.md'),folder=new TFolder('Novel'),folderNote=new TFile('Novel/Novel.md');
@@ -25,8 +26,9 @@ test('9.2.x metadata, modules and CSS',()=>{
  for(const path of files)assert.ok(main.includes('// v3 module: '+path));
  for(const name of ['writerV92ExplorerRegister(this)','writerV92RegisterBlocks(this)','writerV92ResearchRegister(this)','writerV92SessionRegister(this)'])assert.ok(main.includes(name));
  for(const name of ['writer-v92-favorite','writer-v92-file-preview','writer-v92-progress','writer-v92-session'])assert.ok(css.includes(name));
- assert.ok(read('scripts/build-v3.js').includes("'v9/session-drafts'"));
- assert.ok(read('scripts/build-css.js').includes('v9-2-suite.css'));
+ const {sourceIds}=require('../scripts/js-manifest.js');
+ assert.ok(sourceIds.includes('src/v9/session-drafts.js'));
+ assert.ok(read('scripts/css-manifest.js').includes('v9-2-suite.css'));
 });
 test('favorites reuse homepage list and folder note descriptions',()=>{
  const cfg=api.writerV92ExplorerMerge(plugin.settings);
@@ -71,7 +73,7 @@ test('Zotero quotes must be explicit highlights with source',()=>{
 });
 test('session drafts never delete existing vault files',()=>{
  assert.equal(api.writerV92SessionMerge({}).enabled,true);
- const src=read('src/v9/session-drafts.js');
+ const src=read('src/writing/session-drafts.js');
  assert.doesNotMatch(src,/vault\.(delete|trash|modify|process)\(/);
  assert.match(src,/vault\.create\(/);
  assert.match(src,/Confirm discard/);
@@ -79,7 +81,7 @@ test('session drafts never delete existing vault files',()=>{
 test('blocks do not execute arbitrary JS actions',()=>{
  const cfg=api.writerV92BlocksMerge({});
  assert.equal(cfg.metaFields,true);
- const src=read('src/v9/interactive-widgets.js');
+ const src=read(resolveSourcePath('src/v9/interactive-widgets.js'));
  assert.match(src,/processFrontMatter/);
  assert.doesNotMatch(src,/eval\(|new Function\(/);
  for(const type of ['columns','progressbar','widgets','meta-field'])assert.ok(src.includes("register('"+type+"'"));
@@ -288,7 +290,7 @@ test('the native print preview recolors text without a raster filter and graysca
 });
 
 test('9.2.1 Explorer has a right-aligned interactive favorite and bottom preview toggle',()=>{
- const src=read('src/v9/explorer-favorites-preview.js'),css=read('src/styles/v9-2-suite.css');
+ const src=read('src/workspace/explorer-favorites-preview.js'),css=read('src/styles/features/v9-2-suite.css');
  assert.match(src,/writer-v921-preview-toggle/);
  assert.match(src,/nav-header > \.nav-buttons-container/);
  assert.match(src,/aria-pressed/);

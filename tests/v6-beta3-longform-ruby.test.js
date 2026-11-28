@@ -11,7 +11,7 @@ const app={
  vault:{getMarkdownFiles:()=>all,getAbstractFileByPath:p=>all.find(f=>f.path===p)||null,cachedRead:async()=> '---\nlongform:\n  format: scenes\n  scenes: []\n---\n'},
  metadataCache:{getFileCache:f=>f===index?{frontmatter:{longform:{format:'scenes',sceneFolder:'Cenas',scenes:[]}}}:null}
 };
-const n=vm.runInNewContext(fs.readFileSync('src/v6/longform-navigation.js','utf8')+'\n({writerBookNavFindProject,writerBookNavFindProjectAsync,writerBookNavTargets})',{
+const n=vm.runInNewContext(fs.readFileSync('src/projects/longform-navigation.js','utf8')+'\n({writerBookNavFindProject,writerBookNavFindProjectAsync,writerBookNavTargets})',{
  TFile,console,parseYaml:()=>({longform:{format:'scenes',sceneFolder:'Cenas',scenes}}),
  longformIndex:f=>f===index?{file:index,format:'scenes',meta:{sceneFolder:'Cenas'},scenes:[]}:null,
  lfPath:(...xs)=>xs.filter(Boolean).join('/').replace(/\/+/g,'/'),
@@ -25,7 +25,7 @@ const n=vm.runInNewContext(fs.readFileSync('src/v6/longform-navigation.js','utf8
  assert.equal(links.nextMain.path,all[4].path);
  assert.equal(links.nextSub.path,all[2].path);
  const Decoration={mark:x=>({range:(from,to)=>({from,to,mark:x})}),replace:x=>({range:(from,to)=>({from,to,replace:x})}),line:x=>({range:(from)=>({from,line:x})}),set:xs=>xs,none:[]};
- const m=vm.runInNewContext(fs.readFileSync('src/v6/markup.js','utf8')+'\n({writerV6RubyTokens,writerV6RubyHtml,writerV6RubyStrip,writerV6MarkupDecorations,WriterV6RubyWidget})',{
+ const m=vm.runInNewContext(fs.readFileSync('src/editor/markup.js','utf8')+'\n({writerV6RubyTokens,writerV6RubyHtml,writerV6RubyStrip,writerV6MarkupDecorations,WriterV6RubyWidget})',{
  require:x=>x==='@codemirror/view'?{WidgetType:class{}}:{},
  writerUi:(a,b)=>b||a,writerModuleOn:()=>true,writerV6ProtectedRanges:()=>[],
  writerV6Overlaps:()=>false,writerV6SafeTextNodes:()=>[],Decoration,ViewPlugin:null,console

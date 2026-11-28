@@ -11,7 +11,7 @@ function fixture(language='en'){
   control(type,register){const control={type,options:{},addOption(key,label){this.options[key]=label;return this;},setValue(value){this.value=value;return this;},onChange(callback){this.change=callback;return this;}};this.row.control=control;register(control);return this;}
   addToggle(register){return this.control('toggle',register);}addDropdown(register){return this.control('dropdown',register);}
  }
- const source=['src/v13/settings-catalog.js','src/v13/companion-bridge.js','src/v13/native-support-settings.js'].map(path=>fs.readFileSync(path,'utf8')).join('\n');
+ const source=['src/settings/settings-catalog.js','src/integrations/companion-bridge.js','src/settings/native-support-settings.js'].map(path=>fs.readFileSync(path,'utf8')).join('\n');
  const api=vm.runInNewContext(source+'\n({writerSettingsSections,writerSettingsResolveSection,writerSettingsNavigation,writerNativeFloatingSettings,writerNativeExplorerSupportSettings})',{
   Setting,writerUi:(pt,en)=>language==='pt'?pt:en
  });

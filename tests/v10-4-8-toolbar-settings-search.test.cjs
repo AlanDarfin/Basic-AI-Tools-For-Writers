@@ -1,8 +1,8 @@
 'use strict';
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
-const toolbar=fs.readFileSync('src/v9/context-toolbar.js','utf8');
-const search=fs.readFileSync('src/v5/workspace-ux.js','utf8');
-const css=fs.readFileSync('src/styles/v10-2-workflow.css','utf8');
+const toolbar=fs.readFileSync('src/editor/context-toolbar.js','utf8');
+const search=fs.readFileSync('src/workspace/workspace-ux.js','utf8');
+const css=fs.readFileSync('src/styles/features/v10-2-workflow.css','utf8');
 const common={console,Date,Array,Map,Set,Math,Number,String,RegExp,Intl,
  writerUi:(pt,en)=>pt,writerModuleOn:()=>true,
  writerV8HomeIsMobile:plugin=>Boolean(plugin.app.isMobile),

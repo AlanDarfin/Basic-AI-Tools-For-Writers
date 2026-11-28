@@ -3,7 +3,7 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
-const source=fs.readFileSync('src/v12/task-workbench.js','utf8');
+const source=fs.readFileSync('src/writing/task-workbench.js','utf8');
 const plain=value=>JSON.parse(JSON.stringify(value));
 function deferred(){let resolve;const promise=new Promise(done=>{resolve=done;});return {promise,resolve};}
 class TFile{constructor(path,text=''){this.path=path;this.extension='md';this.stat={mtime:1,size:text.length};}}
@@ -156,6 +156,25 @@ test('a failed refresh labels preserved results instead of presenting them as a 
  assert.ok(modal.contentEl.find('writer-native-task-title'));assert.match(modal.contentEl.find('writer-native-task-coverage').text,/refresh failed.*previous results/);
  assert.equal(h.writes.length,0);assert.equal(h.notices.length,1);
 });
+test('refresh requests coalesce and skip unread batches from the superseded task scan',async()=>{
+ const h=harness(),held=deferred(),latest=deferred();
+ for(let i=0;i<37;i++)h.add('Task '+i+'.md','- [ ] Initial task '+i);
+ h.hooks.beforeRead=()=>h.readCalls<=12?held.promise:latest.promise;
+ const modal=h.api.writerV12TaskWorkbench(h.plugin),refresh=h.button(modal,'Refresh');
+ const results=modal.contentEl.find('writer-native-task-results');
+ assert.equal(h.readCalls,12);
+ await refresh.click();await refresh.click();
+ h.settings.v12Toolkit.maxTaskFiles=13;
+ h.files.get('Task 0.md').text='- [ ] Updated task';
+ held.resolve();await settle();
+ assert.equal(h.readCalls,24,'Only the active batch finishes before the replacement begins');
+ assert.equal(results.children.length,0,'Obsolete rows are not rendered');
+ latest.resolve();await settle();
+ assert.equal(h.readCalls,25,'One replacement scan uses the latest limit');
+ assert.match(modal.contentEl.all('p')[0].text,/13 tasks.*13\/37 notes examined/);
+ assert.ok(results.all('div').some(el=>el.text==='Updated task'));
+ assert.equal(h.writes.length,0);
+});
 test('module disable or closing during a scan prevents obsolete coverage and task results from appearing',async()=>{
  for(const action of ['disable','close']){
   const h=harness(),pending=deferred();h.add('Tasks.md','- [ ] Existing');h.hooks.beforeRead=()=>pending.promise;
@@ -163,6 +182,19 @@ test('module disable or closing during a scan prevents obsolete coverage and tas
   pending.resolve();await settle();
   assert.equal(modal.contentEl.find('writer-native-task-results').children.length,0);assert.equal(modal.contentEl.find('writer-native-task-coverage').text,'');assert.equal(h.writes.length,0);
  }
+});
+test('disabling tasks during a queued refresh clears old rows and drops the queued scan',async()=>{
+ const h=harness(),held=deferred();h.add('Tasks.md','- [ ] Existing');
+ const modal=h.api.writerV12TaskWorkbench(h.plugin),refresh=h.button(modal,'Refresh');
+ const results=modal.contentEl.find('writer-native-task-results');
+ await settle();assert.ok(results.find('writer-native-task-title'));
+ h.hooks.beforeRead=()=>held.promise;
+ await refresh.click();await refresh.click();
+ h.settings.v12Toolkit.taskNavigator=false;held.resolve();await settle();
+ assert.equal(results.children.length,0);assert.equal(h.readCalls,2);
+ assert.match(modal.contentEl.all('p')[0].text,/Tasks are disabled/);
+ h.settings.v12Toolkit.taskNavigator=true;await refresh.click();await settle();
+ assert.ok(results.find('writer-native-task-title'));assert.equal(h.readCalls,3);
 });
 test('quick capture refuses an unfinished HTML or Obsidian comment instead of creating an invisible task',async()=>{
  for(const prefix of ['<!--','%%']){

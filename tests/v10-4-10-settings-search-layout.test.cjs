@@ -1,7 +1,7 @@
 'use strict';
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
-const search=fs.readFileSync('src/v5/workspace-ux.js','utf8');
-const css=fs.readFileSync('src/styles/v10-2-workflow.css','utf8');
+const search=fs.readFileSync('src/workspace/workspace-ux.js','utf8');
+const css=fs.readFileSync('src/styles/features/v10-2-workflow.css','utf8');
 const data=[
  ['underline','underline','Sublinhado','Underline'],
  ['subscript','subscript','Subscrito','Subscript'],

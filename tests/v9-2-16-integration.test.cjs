@@ -4,7 +4,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs'),vm=require('node:vm');
 const read=p=>fs.readFileSync(p,'utf8');
 test('Folder Note descriptions survive metadata cache delay',()=>{
- const src=read('src/v9/explorer-favorites-preview.js');
+ const src=read('src/workspace/explorer-favorites-preview.js');
  class TFile{constructor(path){this.path=path;this.extension='md';}}
  class TFolder{constructor(path){this.path=path;this.name='Escrita';}}
  const note=new TFile('Trabalho/Escrita/Escrita.md');
@@ -20,7 +20,7 @@ test('Folder Note descriptions survive metadata cache delay',()=>{
  assert.match(src,/writerV921PreviewBody\(body,cfg.previewMax\)/);
 });
 test('native Spaces use their own name, icon and color, without mutating vault contents',()=>{
- const source=read('src/v9/smart-spaces.js');
+ const source=read('src/workspace/smart-spaces.js');
  const scope=vm.runInNewContext(source+'\n({writerV9SpaceSanitize,writerV9215SpaceHidden})',{ItemView:class{}});
  const a=scope.writerV9SpaceSanitize({name:'Escrita',id:'w',icon:'notebook-pen',iconColor:'#336699',hiddenPaths:['Private']});
  const b=scope.writerV9SpaceSanitize({name:'Estudos',id:'s',hiddenPaths:[]});
@@ -30,13 +30,13 @@ test('native Spaces use their own name, icon and color, without mutating vault c
  assert.equal(scope.writerV9215SpaceHidden(plugin,'Private/chapter.md'),true);
  plugin.settings.v9Spaces.activeId='s';
  assert.equal(scope.writerV9215SpaceHidden(plugin,'Private/chapter.md'),false);
- const dock=read('src/v9/spaces-dock.js');
+ const dock=read('src/workspace/spaces-dock.js');
  for(const term of ['writerV9SpaceEditor','writerV922OpenIconPicker','writerV9215SelectSpace','writer-v9216-spaces-dock'])
   assert.ok(dock.includes(term),term);
  assert.match(dock,/Nenhum arquivo será excluído/);
 });
 test('Pretty settings cover extended visual features',()=>{
- const src=read('src/v9/pretty-properties.js');
+ const src=read('src/editor/pretty-properties.js');
  const api=vm.runInNewContext(src+'\n({writerV9215PrettyMerge})',{});
  const cfg={v9215Pretty:{coverShape:'weird',bannerPosition:'top',dueSoonDays:400}};
  api.writerV9215PrettyMerge(cfg);
@@ -47,7 +47,7 @@ test('Pretty settings cover extended visual features',()=>{
   assert.ok(src.includes(term),term);
 });
 test('Flow and slash actions are registered and use conflict-safe writes',()=>{
- const src=read('src/v9/flow-slash.js');
+ const src=read('src/editor/flow-slash.js');
  const api=vm.runInNewContext(src+'\n({writerV9215SlashActions,writerV9215FlowMerge})',{require:()=>({EditorSuggest:class{}})});
  const a=Array.from(api.writerV9215SlashActions(),x=>x.id);
  for(const id of ['tip','warning','important','flow','flowboard','highlight'])assert.ok(a.includes(id),id);
@@ -68,7 +68,7 @@ test('Flow inline editing rejects concurrent writes and saves against the curren
   remove(){this.removed=true;}
  }
  let notice='',content='Original',commitBeforeSave=false;
- const {writerV9216FlowOpenEditor}=vm.runInNewContext(read('src/v9/flow-slash.js')+'\n({writerV9216FlowOpenEditor})',{
+ const {writerV9216FlowOpenEditor}=vm.runInNewContext(read('src/editor/flow-slash.js')+'\n({writerV9216FlowOpenEditor})',{
   require:()=>({EditorSuggest:class{}}),writerUi:(_pt,en)=>en,Notice:class{constructor(text){notice=text;}}
  });
  const file={path:'Story.md',basename:'Story',stat:{mtime:1}};
@@ -91,7 +91,7 @@ test('Flow inline editing rejects concurrent writes and saves against the curren
 test('slash embed picker keeps the slash text on cancel and rejects stale insertion',()=>{
  let picker,notice,content='Intro /flow';
  class Search{setPlaceholder(){}open(){picker=this;}}
- const {WriterV9215SlashSuggest}=vm.runInNewContext(read('src/v9/flow-slash.js')+'\n({WriterV9215SlashSuggest})',{
+ const {WriterV9215SlashSuggest}=vm.runInNewContext(read('src/editor/flow-slash.js')+'\n({WriterV9215SlashSuggest})',{
   require:()=>({EditorSuggest:class{},FuzzySuggestModal:Search}),writerUi:(_pt,en)=>en,Notice:class{constructor(text){notice=text;}}
  });
  const editor={getValue:()=>content,focus(){},replaceRange(value,start,end){content=content.slice(0,start.ch)+value+content.slice(end.ch);}};
@@ -105,7 +105,7 @@ test('slash embed picker keeps the slash text on cancel and rejects stale insert
  assert.equal(content,'Intro ![[Chapter.md]]');
 });
 test('source and CSS provide a compact dock on mobile, not a second explorer',()=>{
- const css=read('src/styles/v9-2-2-iconic-fixes.css');
+ const css=read('src/styles/native/v9-2-2-iconic-fixes.css');
  assert.match(css,/writer-v9216-spaces-host/);
  assert.match(css,/writer-v9216-spaces-rail/);
  assert.match(css,/body\.is-mobile \.writer-v9216-spaces-dock/);

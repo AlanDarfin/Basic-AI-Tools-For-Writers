@@ -2,7 +2,7 @@
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
-const files=['src/v5/keyshots.js','src/v5/extended-syntax.js','src/v5/pandoc-syntax.js'];
+const files=['src/editor/keyshots.js','src/editor/extended-syntax.js','src/editor/pandoc-syntax.js'];
 const source=files.map(p=>fs.readFileSync(p,'utf8')).join('\n');
 const mock={writerUi:pt=>pt,writerModuleOn:()=>true,console,require:()=>({})};
 const v5=vm.runInNewContext(source+'\n({writerKeyshotsMerge,writerKeyshotsLineAction,writerKeyshotsBindings,writerExtendedMerge,writerExtendedTokens,writerPandocMerge,writerPandocNumber,writerPandocListItem,writerPandocOutline})',
@@ -67,10 +67,11 @@ test('move/duplicate/insert/delete lines edit correct ranges',()=>{
  const remove=fakeEditor('a\nb\nc');assert.ok(v5.writerKeyshotsLineAction(remove,'delete-line'));assert.equal(remove.text,'a\nc');
 });
 test('standalone bundle and settings include all v5 modules',()=>{
- const main=fs.readFileSync('main.js','utf8'),build=fs.readFileSync('scripts/build-v3.js','utf8');
+ const main=fs.readFileSync('main.js','utf8');
+ const {sourceIds}=require('../scripts/js-manifest.js');
  for(const name of ['keyshots','extended-syntax','pandoc-syntax']){
   assert.ok(main.includes('src/v5/'+name+'.js'));
-  assert.ok(build.includes('v5/'+name));
+  assert.ok(sourceIds.includes('src/v5/'+name+'.js'));
  }
  for(const name of ['writerKeyshotsMerge(this.settings)','writerExtendedMerge(this.settings)','writerPandocMerge(this.settings)','this.writerPandocSyntax.register()'])
   assert.ok(main.includes(name),name);

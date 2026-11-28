@@ -48,7 +48,7 @@ function profileRuntime(language='en'){
  const root=new Element({},document);document.activeElement=root;
  const context={console,Setting,writerUi:(pt,en)=>language==='pt'?pt:en,Notice:class{constructor(message){notices.push(message);}},refreshes,
   FuzzySuggestModal:class{open(){context.picker=this;}}};
- const api=vm.runInNewContext(read('src/v5/workspace-ux.js')+'\n'+read('src/v6/project-workspace.js')+'\nwriterV5RefreshEditors=()=>refreshes.push("editors");\n({WriterWorkspaceProfiles,writerV6ProjectPreferencesRender});',context);
+ const api=vm.runInNewContext(read('src/workspace/workspace-ux.js')+'\n'+read('src/projects/project-workspace.js')+'\nwriterV5RefreshEditors=()=>refreshes.push("editors");\n({WriterWorkspaceProfiles,writerV6ProjectPreferencesRender});',context);
  const previousUndo={easyTyping:{enabled:false}},saved=[{name:'Existing',values:{easyTyping:{enabled:true}}}];
  const settings={workspaceProfiles:{undo:previousUndo,lastPreset:'Previous',saved},easyTyping:{enabled:true},smartTypography:{enabled:true},aiKeys:{private:'retain'},prompts:{writing:'Keep my voice'},visibleModules:{easyTyping:false}};
  const plugin={settings,app:{},saveSettings:async()=>{},register:callback=>cleanups.push(callback),addCommand:command=>commands.push(command),refreshModuleVisibility:()=>refreshes.push('modules'),writerV4Extras:{updateTypewriterClass:()=>refreshes.push('typewriter')}};
@@ -169,7 +169,7 @@ function quickStartRuntime(){
   close(){this.closed=true;this.modalEl.isConnected=false;this.onClose?.();}
  }
  const context={console,Modal,Setting,writerUi:(_pt,en)=>en,writerV13SearchText:value=>value.toLowerCase(),writerSettingsLabelControls(){},Notice:class{constructor(message){notices.push(message);}}};
- const api=vm.runInNewContext(read('src/v4/modules.js')+'\n'+read('src/v13/setup-guide.js')+'\n({writerQuickStartOpen,writerQuickStartApply,writerQuickStartRegister});',context);
+ const api=vm.runInNewContext(read('src/settings/modules.js')+'\n'+read('src/settings/setup-guide.js')+'\n({writerQuickStartOpen,writerQuickStartApply,writerQuickStartRegister});',context);
  const plugin={settings:{visibleModules:{dictionary:true}},app:{workspace:{}},saveSettings:async()=>{},register:callback=>cleanups.push(callback),addCommand:command=>commands.push(command),refreshModuleVisibility:()=>refreshes.push('modules'),writerSettingsTab:{display:()=>refreshes.push('settings')}};
  api.writerQuickStartRegister(plugin,false);
  return {api,plugin,notices,commands,refreshes,stop:()=>cleanups.forEach(cleanup=>cleanup()),button:(modal,text)=>modal.contentEl.all().find(item=>item.text===text)};

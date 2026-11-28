@@ -3,7 +3,7 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const vm=require('node:vm');
 const fs=require('node:fs');
-const source=fs.readFileSync('src/v10/integrations-107.js','utf8');
+const source=fs.readFileSync('src/integrations/integrations-107.js','utf8');
 function boot(globals={}){
  const calls=[],timeouts=[],logs=[];
  const env={
@@ -89,14 +89,17 @@ test('Plugin unload cancels delayed initialization instead of reopening inactive
  assert.equal(calls,0);
 });
 test('Core features and previous bundle modules are not deleted',()=>{
- const src=fs.readFileSync('scripts/build-v3.js','utf8');
+ const {sourceIds}=require('../scripts/js-manifest.js');
  const old=['core','complements','variants','snapshots','workspace','final-suite','tts-online',
  'v4/editor','v4/cursor-memory','v6/longform-navigation','v7/story-studio','v8/writing-home',
  'v8/writing-study','v9/context-toolbar','v9/smart-spaces','v9/research-style',
  'v10/enhancements','v10/calendar-exchange','v10/discovery','v10/startup-cleanup',
  'v10/block-dragger','v10/historical-helpers'];
- for(const sourceName of old)assert.ok(src.includes("'"+sourceName+"'"),sourceName+' missing from bundle');
- const enhancements=fs.readFileSync('src/v10/enhancements.js','utf8');
+ for(const name of old){
+  const id='src/'+(name.includes('/')?name:'v3/'+name)+'.js';
+  assert.ok(sourceIds.includes(id),id+' missing from bundle');
+ }
+ const enhancements=fs.readFileSync('src/core/enhancements.js','utf8');
  assert.match(enhancements,/writerV101ReadingProgressRegister\(plugin\)/);
  assert.match(enhancements,/writerV107RegisterAfterStartup\(plugin\)/);
  assert.ok(!enhancements.includes("if(typeof writerV107Register==='function')writerV107Register(plugin)"));

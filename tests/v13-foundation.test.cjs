@@ -7,7 +7,7 @@ const path=require('node:path');
 const root=path.resolve(__dirname,'..');
 const context={};
 vm.createContext(context);
-vm.runInContext(fs.readFileSync(path.join(root,'src/v13/ui-foundation.js'),'utf8')+
+vm.runInContext(fs.readFileSync(path.join(root,'src/core/ui-foundation.js'),'utf8')+
  '\nglobalThis.v13={writerV13SearchText,writerV13CommandCatalog,writerV13CommandScore,writerV13RankCommands,writerV13BindSettingsTabs};',context);
 const v=context.v13;
 test('search is accent-insensitive and command inventory retains existing command IDs',()=>{
@@ -54,11 +54,11 @@ test('settings tabs support arrows, home and end without altering absent buttons
 test('generated outputs and build inventories both include the same v13 entry',()=>{
  const main=fs.readFileSync(path.join(root,'main.js'),'utf8');
  const css=fs.readFileSync(path.join(root,'styles.css'),'utf8');
- const jsBuild=fs.readFileSync(path.join(root,'scripts/build-v3.js'),'utf8');
- const cssBuild=fs.readFileSync(path.join(root,'scripts/build-css.js'),'utf8');
- const toolbar=fs.readFileSync(path.join(root,'src/v9/context-toolbar.js'),'utf8');
+ const {sourceIds}=require('../scripts/js-manifest.js');
+ const cssBuild=fs.readFileSync(path.join(root,'scripts/css-manifest.js'),'utf8');
+ const toolbar=fs.readFileSync(path.join(root,'src/editor/context-toolbar.js'),'utf8');
  assert.match(toolbar,/return writerV1044CommandPicker\(plugin/,'toolbar reuses shared picker');
- assert.match(jsBuild,/v13\/ui-foundation/);
+ assert.ok(sourceIds.includes('src/v13/ui-foundation.js'));
  assert.match(cssBuild,/v13-foundation\.css/);
  assert.match(main,/v3 module: src\/v13\/ui-foundation\.js/);
  assert.match(main,/writerV13BindSettingsTabs\(nav,subnav\)/);
@@ -66,7 +66,7 @@ test('generated outputs and build inventories both include the same v13 entry',(
 });
 
 test('v13 compatibility adapters remain scoped to Basic hosts and preserve Surfing native UI',()=>{
- const css=fs.readFileSync(path.join(root,'src/styles/v13-foundation.css'),'utf8');
+ const css=fs.readFileSync(path.join(root,'src/styles/core/v13-foundation.css'),'utf8');
  assert.match(css,/writer-v11-studio-actions/);
  assert.match(css,/writer-v102-spaces-manager/);
  assert.match(css,/writer-v95-timeline\.is-layout-horizontal/);
@@ -79,8 +79,8 @@ test('v13 compatibility adapters remain scoped to Basic hosts and preserve Surfi
 });
 
 test('legacy command pickers are unified with v13 and obsolete local fallbacks removed',()=>{
- const toolbox=fs.readFileSync(path.join(root,'src/v10/toolbox.js'),'utf8');
- const toolbar=fs.readFileSync(path.join(root,'src/v9/context-toolbar.js'),'utf8');
+ const toolbox=fs.readFileSync(path.join(root,'src/workspace/toolbox.js'),'utf8');
+ const toolbar=fs.readFileSync(path.join(root,'src/editor/context-toolbar.js'),'utf8');
  assert.match(toolbox,/const commands=writerV13CommandCatalog\(plugin\)/);
  assert.match(toolbox,/visible=writerV13RankCommands\(commands,query,70\)/);
  assert.match(toolbar,/return writerV1044CommandPicker\(plugin/);

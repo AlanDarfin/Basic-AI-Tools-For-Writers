@@ -1,7 +1,7 @@
 'use strict';
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const read=f=>fs.readFileSync(f,'utf8');
-const fuzzy=read('src/v8/home-fuzzy.js'),calendar=read('src/v8/writing-calendar.js'),study=read('src/v8/writing-study.js');
+const fuzzy=read('src/workspace/home-fuzzy.js'),calendar=read('src/workspace/writing-calendar.js'),study=read('src/writing/writing-study.js');
 const f=vm.runInNewContext(fuzzy+'\n({score:writerV83FuzzyScore,search:writerV83FuzzySearch})',{});
 const cal=vm.runInNewContext(calendar+'\n({parse:writerV83CalParse,format:writerV83CalFormat,occur:writerV83CalOccurrence,date:writerV83Date,valid:writerV83CalValid})',
  {ItemView:class{},Modal:class{},console});

@@ -3,7 +3,7 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
-const source=fs.readFileSync('src/v9/timeline-blocks.js','utf8');
+const source=fs.readFileSync('src/blocks/timeline-blocks.js','utf8');
 const api=vm.runInNewContext(source+'\n({writerV95TimelineParse,writerV95TimelineSortKey})',{console});
 
 test('George-debug legacy + triplets, bracket classes and event photo metadata',()=>{
@@ -75,7 +75,7 @@ test('All original line/body presets and 11 accent colors are supported',()=>{
 });
 test('Timeline themes have distinct CSS, in both layout orientations',()=>{
  const css=fs.readFileSync('src/styles/v9-5-timeline.css','utf8');
- const js=fs.readFileSync('src/v9/timeline-blocks.js','utf8');
+ const js=fs.readFileSync('src/blocks/timeline-blocks.js','utf8');
  for(const theme of ['minimal','compact','poster','glass','terminal']){
   assert.match(css,new RegExp('is-theme-'+theme));
   assert.ok(api.writerV95TimelineParse('theme: '+theme+'\n+ 2026\n+ Event\n+ Body').config.theme===theme);
@@ -88,7 +88,7 @@ test('Timeline themes have distinct CSS, in both layout orientations',()=>{
  assert.ok(js.includes('is-layout-horizontal'));
 });
 test('Property search lives inside native collapsible properties and preserves the filter',()=>{
- const js=fs.readFileSync('src/v9/pretty-properties.js','utf8');
+ const js=fs.readFileSync('src/editor/pretty-properties.js','utf8');
  const css=fs.readFileSync('src/styles/v9-5-timeline.css','utf8');
  assert.match(js,/firstRow\?\.closest\('\.metadata-properties'\)/);
  assert.match(js,/properties\.insertBefore\(input,properties\.firstChild\)/);
@@ -97,8 +97,8 @@ test('Property search lives inside native collapsible properties and preserves t
  assert.match(css,/\.metadata-container\.is-collapsed \.writer-v9216-pretty-search/);
 });
 test('Markdown block is registered with bilingual UI and bundled for distribution',()=>{
- const module=fs.readFileSync('src/v8/finish-blocks.js','utf8');
- const modules=fs.readFileSync('src/v4/modules.js','utf8');
+ const module=fs.readFileSync('src/blocks/finish-blocks.js','utf8');
+ const modules=fs.readFileSync('src/settings/modules.js','utf8');
  const bundle=fs.readFileSync('main.js','utf8');
  const css=fs.readFileSync('styles.css','utf8');
  assert.match(module,/writerV95RegisterTimelineBlocks\(plugin\)/);
@@ -139,7 +139,7 @@ test('timeline headings normalize legacy HTML breaks and preserve safe Markdown'
  ].join('\n'),'timeline-labeled');
  assert.equal(labeled.events[0].title,'One\nTwo');
  assert.equal(labeled.events[0].content,'Normal <br> HTML is preserved.');
- const css=fs.readFileSync('src/styles/v13-foundation.css','utf8');
+ const css=fs.readFileSync('src/styles/core/v13-foundation.css','utf8');
  assert.match(css,/writer-v95-timeline-title\{\s*white-space:pre-line/);
  assert.match(css,/is-heading-only/);
 });

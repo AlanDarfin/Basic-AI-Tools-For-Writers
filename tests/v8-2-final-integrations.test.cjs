@@ -3,10 +3,10 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs'),vm=require('node:vm');
 const read=path=>fs.readFileSync(path,'utf8');
-const src=read('src/v8/finish-blocks.js');
-const utilities=read('src/v8/home-utilities.js');
-const home=read('src/v8/writing-home.js');
-const css=read('src/styles/v8-finish-suite.css');
+const src=read('src/blocks/finish-blocks.js');
+const utilities=read('src/workspace/home-utilities.js');
+const home=read('src/workspace/writing-home.js');
+const css=read('src/styles/features/v8-finish-suite.css');
 const fm=vm.runInNewContext(utilities+'\n'+src+'\n({writerV8FinishMerge,writerV8ParseCaption,writerV8CaptionFromImage,writerV8CaptionProcess,writerV8ChatParse})',{});
 const hm=vm.runInNewContext(home+'\n({writerV8HomeSearch,writerV8HomeTopFiles,writerV8HomeStats,writerV8HomeToggleFavorite})',{ItemView:class{},TFile:class{},PROJECT_VIEW:'writer-projects'});
 test('caption parser preserves user text, filename shorthand and avoids default filenames',()=>{
@@ -66,8 +66,8 @@ test('quick drafts are local and persist across switches; export chooses a new p
  assert.match(home,/homeQuick=\[|homeQuick\[index\]/);
  assert.match(home,/if\(index>=0\)/);
  assert.match(home,/plugin\.saveSettings/);
- assert.match(home,/this\.app\.vault\.create\(path,body\+'\\n'\)/);
- assert.match(home,/while\(this\.app\.vault\.getAbstractFileByPath\(path\)\)/);
+ assert.match(home,/vault\.create\(path,body\+'\\n'\)/);
+ assert.match(home,/while\(vault\.getAbstractFileByPath\(path\)\)/);
  assert.doesNotMatch(home,/fetch\(|requestUrl\(/);
 });
 test('dashboard safely delegates startup cleanup and does not add editor extensions',()=>{
@@ -92,6 +92,7 @@ test('published bundle, source and documentation all include final writing featu
   assert.ok(docs.includes('SUITES_AND_INTEGRATIONS.'),path+' links the current guide');
   for(const feature of [captions,music])assert.ok(details.includes(feature),guide+': '+feature);
  }
- assert.match(read('scripts/build-v3.js'),/v8\/finish-blocks/);
- assert.match(read('scripts/build-v3.js'),/v8\/writing-home/);
+ const {sourceIds}=require('../scripts/js-manifest.js');
+ assert.ok(sourceIds.includes('src/v8/finish-blocks.js'));
+ assert.ok(sourceIds.includes('src/v8/writing-home.js'));
 });

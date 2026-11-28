@@ -162,8 +162,8 @@ test('Longform uses one accessible icon tab strip instead of the compact select'
 });
 
 test('shared sidebar strip stays in one scrolling row with icon-only tabs at the smallest widths',()=>{
- const projectCss=fs.readFileSync('src/styles/v13-6-projects.css','utf8');
- const sidebarCss=fs.readFileSync('src/styles/v13-6-tools.css','utf8');
+ const projectCss=fs.readFileSync('src/styles/features/v13-6-projects.css','utf8');
+ const sidebarCss=fs.readFileSync('src/styles/features/v13-6-tools.css','utf8');
  assert.doesNotMatch(projectCss,/writer-v136-project-sections|writer-project-tabs[^{}]*\{\s*display:none/);
  assert.match(sidebarCss,/\.writer-sidebar-tabs\{[^}]*flex-flow:row nowrap;[^}]*overflow-x:auto/);
  assert.match(sidebarCss,/\.writer-sidebar-tabs>button\{[^}]*display:inline-flex;flex-direction:row/);

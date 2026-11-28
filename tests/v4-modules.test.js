@@ -2,7 +2,7 @@
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
-const source=fs.readFileSync('src/v4/modules.js','utf8');
+const source=fs.readFileSync('src/settings/modules.js','utf8');
 const api=vm.runInNewContext(source+'\n({WRITER_MODULES,writerMergeModules,writerModuleOn,writerVisibleTabs,writerDiagnostics})',{
  writerUi:(pt,en)=>pt,URL,console
 });
@@ -58,10 +58,10 @@ test('diagnostics never expose API keys or credentials from endpoint',()=>{
 });
 test('standalone views and Longform respect optional modules and skip hidden panels',()=>{
  const main=fs.readFileSync('main.js','utf8');
- const tools=fs.readFileSync('src/v3/workspace.js','utf8');
+ const tools=fs.readFileSync('src/workspace/workspace.js','utf8');
  const projects=fs.readFileSync('projects.js','utf8');
- const grammar=fs.readFileSync('src/v4/auto-grammar.js','utf8');
- const integrations=fs.readFileSync('src/v4/integrations.js','utf8');
+ const grammar=fs.readFileSync('src/writing/auto-grammar.js','utf8');
+ const integrations=fs.readFileSync('src/integrations/integrations.js','utf8');
  assert.ok(main.includes('this.applyModuleVisibility()'));
  assert.ok(main.includes("const sections=writerSettingsSections();"));
  assert.ok(main.includes('writerRenderModuleSettings(this.plugin,panel'));

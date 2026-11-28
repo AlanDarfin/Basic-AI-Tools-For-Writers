@@ -18,7 +18,7 @@ test('9.2.2 manifest and package versions match',()=>{
 });
 
 test('the chat puts user bubbles on right despite inherited row-reverse CSS',()=>{
- const css=read('src/styles/v9-1-unified.css');
+ const css=read('src/styles/features/v9-1-unified.css');
  assert.match(css,/\.writer-v91-ai-chat-row\.is-right\s*\{[^}]*flex-direction:row\s*;[^}]*justify-content:flex-end/s);
  assert.match(css,/\.writer-v91-ai-chat-row\.is-right \.writer-v8-chat-group\s*\{[^}]*margin-inline-start:auto/s);
  assert.match(css,/\.writer-v91-ai-chat-row\.is-left\{justify-content:flex-start/);
@@ -28,8 +28,8 @@ test('the chat puts user bubbles on right despite inherited row-reverse CSS',()=
 });
 
 test('the Explorer preview is outside the folder or file title row',()=>{
- const source=read('src/v9/explorer-favorites-preview.js');
- const css=read('src/styles/v9-2-2-iconic-fixes.css');
+ const source=read('src/workspace/explorer-favorites-preview.js');
+ const css=read('src/styles/native/v9-2-2-iconic-fixes.css');
  assert.match(source,/node\.insertAdjacentElement\('afterend',shell\)/);
  assert.doesNotMatch(source,/node\.appendChild\(shell\)/);
  assert.match(source,/oldInline\?\.remove\(\)/);
@@ -43,9 +43,9 @@ test('the Explorer preview is outside the folder or file title row',()=>{
 });
 
 test('homepage, favorite and file/folder pickers reuse one searchable Iconic gallery',()=>{
- const native=read('src/v9/native-explorer.js');
- const home=read('src/v8/writing-home.js');
- const fav=read('src/v9/explorer-favorites-preview.js');
+ const native=read('src/workspace/native-explorer.js');
+ const home=read('src/workspace/writing-home.js');
+ const fav=read('src/workspace/explorer-favorites-preview.js');
  assert.match(native,/function writerV922OpenIconPicker\(plugin,options\)/);
  assert.match(native,/function writerV922IconSetting\(plugin,panel/);
  assert.match(native,/writerV922OpenIconPicker\(plugin,\{/);
@@ -66,7 +66,7 @@ test('homepage, favorite and file/folder pickers reuse one searchable Iconic gal
 });
 
 test('all available Lucide IDs are accepted, unknown IDs fall back',()=>{
- const code=read('src/v9/native-explorer.js')+'\n'+read('src/v8/home-utilities.js')+
+ const code=read('src/workspace/native-explorer.js')+'\n'+read('src/workspace/home-utilities.js')+
  '\n({writerV9AvailableIcons,writerV922ValidIconList,writerV8HomeIconName})';
  const lib=vm.runInNewContext(code,{require:()=>({getIconIds:()=>['audio-lines','book-open','star','custom-lucide']})});
  assert.equal(lib.writerV8HomeIconName('audio-lines'),'audio-lines');
@@ -78,10 +78,10 @@ test('all available Lucide IDs are accepted, unknown IDs fall back',()=>{
 
 test('bundles remain registered without forcing HTML or SVG into notes',()=>{
  const main=read('main.js');
- const build=read('scripts/build-css.js');
+ const build=read('scripts/css-manifest.js');
  assert.match(main,/function writerV922OpenIconPicker/);
  assert.match(main,/node\.insertAdjacentElement\('afterend',shell\)/);
  assert.match(build,/v9-2-2-iconic-fixes\.css/);
- const icon=read('src/v9/native-explorer.js');
+ const icon=read('src/workspace/native-explorer.js');
  assert.doesNotMatch(icon,/eval\(|new Function\(/);
 });

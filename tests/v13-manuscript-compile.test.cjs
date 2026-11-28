@@ -1,6 +1,6 @@
 'use strict';
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
-const source=fs.readFileSync('src/v11/longform-studio.js','utf8');
+const source=fs.readFileSync('src/projects/longform-studio.js','utf8');
 function deferred(){let resolve;const promise=new Promise(done=>resolve=done);return {promise,resolve};}
 class TFile{constructor(path){this.path=path;this.extension='md';this.basename=path.split('/').at(-1).replace(/\.md$/,'');this.stat={mtime:1,size:0};}}
 class TFolder{constructor(path){this.path=path;}}

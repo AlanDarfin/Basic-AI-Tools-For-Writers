@@ -1,6 +1,6 @@
 'use strict';
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
-const source=fs.readFileSync('src/v13/ui-foundation.js','utf8');
+const source=fs.readFileSync('src/core/ui-foundation.js','utf8');
 const {writerV132ProtectStatusBar:protect}=vm.runInNewContext(source+'\n({writerV132ProtectStatusBar})');
 test('status protection is scoped, shared by widgets and restored on unload',()=>{
  const names=new Set(['status-bar']),callbacks=[];
@@ -13,7 +13,7 @@ test('status protection is scoped, shared by widgets and restored on unload',()=
  assert.equal(callbacks.length,1);
 });
 test('project titles retain a full row in narrow panes and status sliders use one track style',()=>{
- const css=fs.readFileSync('src/styles/v13-foundation.css','utf8');
+ const css=fs.readFileSync('src/styles/core/v13-foundation.css','utf8');
  assert.match(css,/writer-v7-scene-title-wrap\{[\s\S]*?grid-column:2;grid-row:1/);
  assert.match(css,/writer-project-scene-title-text\{[\s\S]*?text-overflow:ellipsis/);
  assert.match(css,/writer-project-tabs\.writer-project-tabs>button[\s\S]*?white-space:nowrap/);
@@ -23,11 +23,11 @@ test('project titles retain a full row in narrow panes and status sliders use on
 });
 
 test('narrow project panes wrap navigation groups and keep scene actions inline',()=>{
- const css=fs.readFileSync('src/styles/v13-6-projects.css','utf8');
+ const css=fs.readFileSync('src/styles/features/v13-6-projects.css','utf8');
  const narrow=css.slice(css.indexOf('@container basic-project (max-width:540px)'),css.indexOf('@container basic-project (max-width:250px)'));
  assert.match(narrow,/writer-project-nav-groups\{[^}]*grid-template-columns:repeat\(auto-fit,minmax\(min\(100%,96px\),1fr\)\)/);
  assert.match(narrow,/writer-project-nav-label\{display:block/);
- assert.match(narrow,/writer-project-scene-actions\{grid-template-columns:28px minmax\(0,1fr\);/);
+ assert.match(narrow,/writer-project-scene-actions\{grid-template-columns:28px minmax\(0,1fr\) max-content;/);
  assert.match(narrow,/body\.is-mobile .*writer-project-scene-actions\{grid-template-columns:44px minmax\(0,1fr\) 44px\}/);
  assert.match(narrow,/writer-v7-scene-title-wrap\{grid-column:2;grid-row:1/);
  assert.match(narrow,/writer-project-scene-controls\{grid-column:3;grid-row:1/);
@@ -37,7 +37,7 @@ test('narrow project panes wrap navigation groups and keep scene actions inline'
 });
 
 test('reading status shows duration and exposes the complete estimate in both languages',()=>{
- const source=fs.readFileSync('src/v6/reading.js','utf8');
+ const source=fs.readFileSync('src/editor/reading.js','utf8');
  for(const [lang,visible,detail] of [['pt','1 min leitura','1 minuto de leitura · 6 palavras'],['en','1 min read','1 minute of reading · 6 words']]){
   const {writerV6ReadingTextStatus:update}=vm.runInNewContext(source+'\n({writerV6ReadingTextStatus})',{
    writerUi:(pt,en)=>lang==='pt'?pt:en,writerV6Allowed:()=>true,MarkdownView:class{}
@@ -62,7 +62,7 @@ test('reading status shows duration and exposes the complete estimate in both la
 });
 
 test('Longform scene rows are compact and inline on desktop, with hover and keyboard-revealed actions',()=>{
- const css=fs.readFileSync('src/styles/v13-6-projects.css','utf8');
+ const css=fs.readFileSync('src/styles/features/v13-6-projects.css','utf8');
  const shipped=fs.readFileSync('styles.css','utf8');
  const start=css.indexOf('/* Desktop Longform: compact single-line scenes');
  const end=css.indexOf('/* Visual-only Longform story arc dividers',start);

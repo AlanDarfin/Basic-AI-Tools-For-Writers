@@ -1,7 +1,7 @@
 'use strict';
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 class TFile{constructor(path){this.path=path;this.extension='md';this.basename=path.split('/').pop().replace(/\.md$/,'');this.parent={path:path.split('/').slice(0,-1).join('/')};}}
-const source=fs.readFileSync('src/v6/longform-navigation.js','utf8');
+const source=fs.readFileSync('src/projects/longform-navigation.js','utf8');
 const index=new TFile('Book/Index.md');
 const ordered=[
  {title:'A',indent:0},{title:'A.1',indent:1},{title:'A.2',indent:1},
@@ -90,7 +90,7 @@ test('navigation toggle and main/sub filtering keep distinct targets',()=>{
  assert.equal(buttons[0].target.title,'A.1');
 });
 (async()=>{
- const cursor=fs.readFileSync('src/v4/cursor-memory.js','utf8');
+ const cursor=fs.readFileSync('src/editor/cursor-memory.js','utf8');
  const effects=[],scrollCalls=[];
  const EditorView={scrollIntoView:(at,opt)=>({at,opt})};
  const memoryAPI=vm.runInNewContext(cursor+'\n({WriterCursorMemory,writerCursorMerge})',{writerModuleOn:()=>true,writerUi:(a,b)=>b||a,MarkdownView:class{},EditorView,console,setTimeout,clearTimeout,Setting:class{},Notice:class{}});
@@ -115,10 +115,11 @@ test('navigation toggle and main/sub filtering keep distinct targets',()=>{
  assert.ok(effects.some(e=>e.effects.at===22),'CM6 should receive scrollIntoView for selected line');
  await memory.stop();
  console.log('PASS mobile cursor scroll effect retries after viewport settles');
- const main=fs.readFileSync('main.js','utf8'),build=fs.readFileSync('scripts/build-v3.js','utf8');
+ const main=fs.readFileSync('main.js','utf8');
+ const {sourceIds}=require('../scripts/js-manifest.js');
  assert.ok(main.includes('// v3 module: src/v6/longform-navigation.js'));
  assert.ok(main.includes('new WriterBookNavigation(this)'));
- assert.ok(build.includes("'v6/longform-navigation'"));
+ assert.ok(sourceIds.includes('src/v6/longform-navigation.js'));
  console.log('PASS v6 beta2 code is included in Obsidian build');
  console.log(passed+2+' v6 navigation and mobile cursor regressions passed');
 })().catch(error=>{console.error(error);process.exitCode=1;});

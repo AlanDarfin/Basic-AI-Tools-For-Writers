@@ -7,13 +7,13 @@ const main=fs.readFileSync('main.js','utf8');
 const css=fs.readFileSync('styles.css','utf8');
 
 test('homepage slash searches use native Web Viewer and never match vault notes',()=>{
- const home=fs.readFileSync('src/v8/writing-home.js','utf8');
- const utils=fs.readFileSync('src/v8/home-utilities.js','utf8');
+ const home=fs.readFileSync('src/workspace/writing-home.js','utf8');
+ const utils=fs.readFileSync('src/workspace/home-utilities.js','utf8');
  assert.match(home,/const slashSearch=\(\)=>input\.value\.trimStart\(\)\.startsWith\('\/'\)/);
  assert.match(home,/if\(slashSearch\(\)\)\{[\s\S]*?matches=\[\];selected=0;status\.hidden=false;[\s\S]*?return; \/\/ Never search/);
- assert.match(home,/if\(slashSearch\(\)\)await writerV8HomeOpenNativeSearch\(this\.plugin,slashTerm\(\)\)/);
+ assert.match(home,/if\(slashSearch\(\)\)await writerV8HomeOpenNativeSearch\(this\.plugin,slashTerm\(\),current\)/);
  assert.match(home,/if\(event\.key==='Enter'\)\{\s*if\(slashSearch\(\)\)/);
- assert.match(utils,/async function writerV8HomeOpenNativeSearch\(plugin,input\)/);
+ assert.match(utils,/async function writerV8HomeOpenNativeSearch\(plugin,input,current=\(\)=>true\)/);
  assert.match(utils,/if\(!writerV8HomeWebViewerEnabled\(plugin\)\)/);
  assert.match(utils,/await leaf\.setViewState\(\{type:'webviewer'/);
  assert.doesNotMatch(utils.slice(utils.indexOf('async function writerV8HomeOpenNativeSearch'),utils.indexOf('async function writerV8HomeOpenURL')),
@@ -22,8 +22,8 @@ test('homepage slash searches use native Web Viewer and never match vault notes'
 });
 
 test('narrative indent and hyphenation are opt-out and respect explicit Basic alignment',()=>{
- const align=fs.readFileSync('src/v10/inline-alignment.js','utf8');
- const foundation=fs.readFileSync('src/styles/v13-6-tools.css','utf8');
+ const align=fs.readFileSync('src/editor/inline-alignment.js','utf8');
+ const foundation=fs.readFileSync('src/styles/features/v13-6-tools.css','utf8');
  assert.match(align,/hideDelimiters:true,proseLayout:true/);
  assert.match(align,/function writerV102SyncProseLayout/);
  assert.match(align,/cfg\.proseLayout=value;\s*writerV102SyncProseLayout\(plugin\)/);
@@ -34,7 +34,7 @@ test('narrative indent and hyphenation are opt-out and respect explicit Basic al
 });
 
 test('status bar is fixed to the lower edge without covering left-pane controls',()=>{
- const source=fs.readFileSync('src/styles/v13-6-projects.css','utf8');
+ const source=fs.readFileSync('src/styles/features/v13-6-projects.css','utf8');
  const start=source.indexOf('/* Fixed bottom dock rather than a centered floating status bar.');
  const block=source.slice(start);
  assert.ok(start>0);
@@ -46,7 +46,7 @@ test('status bar is fixed to the lower edge without covering left-pane controls'
 });
 
 test('LanguageTool popup and sidebar results stay compact, with touch-sized actions',()=>{
- const source=fs.readFileSync('src/styles/v13-7-review.css','utf8');
+ const source=fs.readFileSync('src/styles/features/v13-7-review.css','utf8');
  assert.match(source,/menu\.writer-v406-lt-compact\{[\s\S]*?max-height:min\(285px,52dvh\)/);
  assert.match(source,/writer-review-results\{\s*display:flex;flex-direction:column;gap:5px/);
  assert.match(source,/writer-review-results \.writer-lt-result\{[\s\S]*?padding:7px 8px/);

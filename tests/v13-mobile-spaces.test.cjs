@@ -3,7 +3,7 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
-const source=fs.readFileSync('src/v9/spaces-dock.js','utf8');
+const source=fs.readFileSync('src/workspace/spaces-dock.js','utf8');
 
 function setup(){
  const documentEvents=new Map(),events={},cleanup=[],observers=[],timers=new Map(),commands=[],notices=[];let serial=0,currentPicker=null;
@@ -108,6 +108,20 @@ test('closed mobile Spaces keep only the toggle and mount current choices on dem
  toggle.click();
  const chip=h.dock().querySelector('.writer-v9216-space-chip');
  assert.equal(chip.getAttribute('aria-label'),'Ficção revisada');
+});
+
+test('the dock delegates selection refresh to the Space switch and closes its local chooser',async()=>{
+ const h=setup();h.start();
+ const refresh=h.plugin.writerV9216SpacesDockRefresh;
+ let refreshes=0;
+ h.plugin.writerV9216SpacesDockRefresh=()=>{refreshes++;refresh();};
+ h.dock().querySelector('.writer-v1014-spaces-toggle').click();
+ h.dock().querySelector('.writer-v9216-space-chip').click();
+ for(let turn=0;turn<4;turn++)await Promise.resolve();
+ h.flush();
+ assert.equal(refreshes,1);
+ assert.equal(h.settings.v9Spaces.activeId,'fiction');
+ assert.equal(h.dock().querySelector('.writer-v1014-spaces-toggle').getAttribute('aria-expanded'),'false');
 });
 
 test('editing only a Space folder refreshes the open search index without losing the query',()=>{

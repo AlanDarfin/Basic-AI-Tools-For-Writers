@@ -74,7 +74,12 @@ function writerV83CalValid(input){
 async function writerV83CalEvents(plugin){
  const folder=plugin.app.vault.getAbstractFileByPath(WRITER_V83_CAL_FOLDER);
  if(!(folder instanceof TFolder))return [];
- const files=folder.children.filter(f=>f instanceof TFile&&f.extension==='md').slice(0,900);
+ const files=[];
+ for(const file of folder.children){
+  if(!(file instanceof TFile)||file.extension!=='md')continue;
+  files.push(file);
+  if(files.length===900)break;
+ }
  const events=[];
  for(const file of files){
   try{const e=writerV83CalParse(await plugin.app.vault.cachedRead(file),file.path);if(e)events.push(e);}

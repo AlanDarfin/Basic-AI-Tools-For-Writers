@@ -241,7 +241,8 @@ class WriterV912VirtualContent{
   const ticket=++this.generation;
   if(!this.active()){this.clearAll();this.renderSidebar();return;}
   const leaves=this.plugin.app.workspace.getLeavesOfType?.('markdown')||[];
-  for(const leaf of this.mounted.keys())if(!leaves.includes(leaf))this.clear(leaf);
+  const liveLeaves=new Set(leaves);
+  for(const leaf of this.mounted.keys())if(!liveLeaves.has(leaf))this.clear(leaf);
   await Promise.all(leaves.map(leaf=>this.renderLeaf(leaf,ticket)));
   if(ticket===this.generation)this.renderSidebar();
  }
@@ -253,7 +254,7 @@ class WriterV912VirtualContent{
  async renderLeaf(leaf,ticket){
   const view=leaf.view,file=view?.file;
   if(!(file instanceof TFile)||file.extension!=='md'){this.clear(leaf);return;}
-  const reading=view.getMode?.()==='preview',source=view.getMode?.()==='source';
+  const mode=view.getMode?.(),reading=mode==='preview',source=mode==='source';
   if(!reading&&!source){this.clear(leaf);return;}
   if(source&&!this.cfg.showLivePreview){this.clear(leaf);return;}
   const root=reading?view.previewMode?.containerEl?.querySelector?.('.markdown-preview-sizer'):

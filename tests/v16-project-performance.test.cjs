@@ -147,3 +147,28 @@ test('Virtual Content short-circuits any and all rules',()=>{
  assert.equal(c.writerV912VirtualMatch({conditions:[true,false],match:'any'},file,{}),true);assert.equal(checks,1);
  checks=0;assert.equal(c.writerV912VirtualMatch({conditions:[false,true],match:'all'},file,{}),false);assert.equal(checks,1);
 });
+
+test('Calendar collection stops inspecting children at 900 Markdown notes',async()=>{
+ const s=fs.readFileSync('src/workspace/writing-calendar.js','utf8');
+ const root=new TFolder('Writing Calendar');let inspected=0;const reads=[];
+ root.children=Array.from({length:2000},(_,i)=>{
+  const f=new TFile('Writing Calendar/'+i+'.md',root);
+  Object.defineProperty(f,'extension',{get(){inspected++;return i%2===0?'md':'png';}});
+  return f;
+ });
+ const c=vm.createContext({TFile,TFolder,WRITER_V83_CAL_FOLDER:root.path,writerV83CalParse:(_s,path)=>({path})});
+ const start=s.indexOf('async function writerV83CalEvents'),end=s.indexOf('function writerV83CalForm',start);
+ vm.runInContext(s.slice(start,end),c);
+ const plugin={app:{vault:{getAbstractFileByPath:()=>root,cachedRead:async f=>{reads.push(f.path);return '';}}}};
+ const result=await c.writerV83CalEvents(plugin);
+ assert.equal(inspected,1799);assert.equal(result.length,900);assert.equal(reads[899],'Writing Calendar/1798.md');
+});
+test('Project cover menu keeps a missing selection and does not re-scan paths',()=>{
+ const s=fs.readFileSync('src/projects/project-metadata.js','utf8');
+ const start=s.indexOf("   let currentFound=false;"),end=s.indexOf("   d.setValue(current)",start);
+ let reads=0;const options=[];
+ const files=['A.png','B.png'].map(path=>({get path(){reads++;return path;}}));
+ const c=vm.createContext({files,current:'Missing.png',d:{addOption:(id,label)=>options.push([id,label])},lfMsg:(_pt,en)=>en});
+ vm.runInContext(s.slice(start,end),c);
+ assert.equal(reads,2);assert.deepEqual(options,[['A.png','A.png'],['B.png','B.png'],['Missing.png','Missing file: Missing.png']]);
+});

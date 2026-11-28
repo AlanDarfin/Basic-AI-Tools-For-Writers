@@ -53,8 +53,13 @@ function writerProjectMetaRender(view,panel,project){
   .addDropdown(d=>{
    d.addOption('',lfMsg('Sem capa','No cover'));
    const files=writerProjectCoverFiles(view.app);
-   for(const image of files)d.addOption(image.path,image.path);
-   if(current&&!files.some(image=>image.path===current))d.addOption(current,lfMsg('Arquivo ausente: ','Missing file: ')+current);
+   let currentFound=false;
+   for(const image of files){
+    const path=image.path;
+    if(path===current)currentFound=true;
+    d.addOption(path,path);
+   }
+   if(current&&!currentFound)d.addOption(current,lfMsg('Arquivo ausente: ','Missing file: ')+current);
    d.setValue(current).onChange(async path=>{
     if(path&&!writerProjectValidCover(view.app,path)){new Notice(lfMsg('Selecione uma imagem válida do cofre.','Choose a valid vault image.'));return;}
     project.meta.cover=path;

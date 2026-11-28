@@ -291,3 +291,8 @@ Phase 6 next deliverable: a reproducible read-only module/declaration/lifecycle 
 
 - CI #1411 passed Phase 11.6. Avoid scanning the rendered range for single calendar occurrences, preserve exclusions and existing range cap, and skip recurrence expansion for filtered categories before sorting.
 - Folder Overview resolves a folder note once per parent per traversal, with no persistent cache. Virtual Content short-circuits any/all condition checks. Four focused behavioral regressions added; source and shipping bundle synchronized. Full new CI and live desktop/mobile profiling pending. Project metadata remains a follow-up target; no merge or release.
+
+### Phase 11.8 — bounded calendar enumeration and view bookkeeping
+
+- Stop inspecting calendar folder children after the first 900 Markdown files instead of allocating an unbounded intermediate list. Preserve file order, sequential reads and the existing limit. Virtual Content refresh uses a single set of live leaves for membership checks and reads the current editor mode once per render. Project metadata reuses each cover path while populating the dropdown, preserving missing selections and sorting.
+- Add two focused regression fixtures for bounded calendar enumeration and missing-cover behavior. No persistent cache, settings format, CSS or dependency changes. Full CI and real-device profiling remain pending.

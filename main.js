@@ -8069,8 +8069,13 @@ function writerProjectMetaRender(view,panel,project){
   .addDropdown(d=>{
    d.addOption('',lfMsg('Sem capa','No cover'));
    const files=writerProjectCoverFiles(view.app);
-   for(const image of files)d.addOption(image.path,image.path);
-   if(current&&!files.some(image=>image.path===current))d.addOption(current,lfMsg('Arquivo ausente: ','Missing file: ')+current);
+   let currentFound=false;
+   for(const image of files){
+    const path=image.path;
+    if(path===current)currentFound=true;
+    d.addOption(path,path);
+   }
+   if(current&&!currentFound)d.addOption(current,lfMsg('Arquivo ausente: ','Missing file: ')+current);
    d.setValue(current).onChange(async path=>{
     if(path&&!writerProjectValidCover(view.app,path)){new Notice(lfMsg('Selecione uma imagem válida do cofre.','Choose a valid vault image.'));return;}
     project.meta.cover=path;
@@ -13480,7 +13485,12 @@ function writerV83CalValid(input){
 async function writerV83CalEvents(plugin){
  const folder=plugin.app.vault.getAbstractFileByPath(WRITER_V83_CAL_FOLDER);
  if(!(folder instanceof TFolder))return [];
- const files=folder.children.filter(f=>f instanceof TFile&&f.extension==='md').slice(0,900);
+ const files=[];
+ for(const file of folder.children){
+  if(!(file instanceof TFile)||file.extension!=='md')continue;
+  files.push(file);
+  if(files.length===900)break;
+ }
  const events=[];
  for(const file of files){
   try{const e=writerV83CalParse(await plugin.app.vault.cachedRead(file),file.path);if(e)events.push(e);}
@@ -20642,7 +20652,8 @@ class WriterV912VirtualContent{
   const ticket=++this.generation;
   if(!this.active()){this.clearAll();this.renderSidebar();return;}
   const leaves=this.plugin.app.workspace.getLeavesOfType?.('markdown')||[];
-  for(const leaf of this.mounted.keys())if(!leaves.includes(leaf))this.clear(leaf);
+  const liveLeaves=new Set(leaves);
+  for(const leaf of this.mounted.keys())if(!liveLeaves.has(leaf))this.clear(leaf);
   await Promise.all(leaves.map(leaf=>this.renderLeaf(leaf,ticket)));
   if(ticket===this.generation)this.renderSidebar();
  }
@@ -20654,7 +20665,7 @@ class WriterV912VirtualContent{
  async renderLeaf(leaf,ticket){
   const view=leaf.view,file=view?.file;
   if(!(file instanceof TFile)||file.extension!=='md'){this.clear(leaf);return;}
-  const reading=view.getMode?.()==='preview',source=view.getMode?.()==='source';
+  const mode=view.getMode?.(),reading=mode==='preview',source=mode==='source';
   if(!reading&&!source){this.clear(leaf);return;}
   if(source&&!this.cfg.showLivePreview){this.clear(leaf);return;}
   const root=reading?view.previewMode?.containerEl?.querySelector?.('.markdown-preview-sizer'):
